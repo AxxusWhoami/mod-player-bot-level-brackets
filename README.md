@@ -25,7 +25,7 @@ Bots that cannot be safely reset at a given moment (for example, those in combat
 - **Arena team exclusion** — bots that are members of an arena team are excluded from level adjustments.
 - **Name-based exclusion** — specific bots can be excluded by name via a comma-separated configuration list.
 - **Startup configuration validation** — warns on invalid `NumRanges`, overlapping brackets, zero-sum percentages, and low `FlaggedProcessLimit`.
-- **Hot-reload command** — reload the module configuration in-game without restarting the server.
+- **Admin commands** — five in-game/console commands for live monitoring, forced cycles, and queue management without server restarts.
 - **Full and lite debug modes** — detailed server log output for monitoring and troubleshooting.
 
 ## Minimum and Maximum Bot Level Support
@@ -236,6 +236,18 @@ BotLevelBrackets.FullDebugMode = 1   # every bot decision, skip reason, and leve
 ```
 
 Both modes write to the standard server log (`server.loading` channel).
+
+## Admin Commands
+
+All commands require the `Administrator` security level and work both in-game and from the server console.
+
+| Command | Description |
+|---|---|
+| `.botbrackets reload` | Reload the module configuration from disk without restarting the server. |
+| `.botbrackets status` | Print a live bracket table showing actual vs desired bot counts per range for both factions, plus the current pending queue size. |
+| `.botbrackets force` | Trigger an immediate full distribution cycle (same logic as the periodic timer). Useful after a config reload or when testing bracket changes. |
+| `.botbrackets pending` | Show the pending reset queue size, the queue cap (`MaxPendingQueueSize`), TTL setting, and the age of the oldest and newest entries. |
+| `.botbrackets guildcleanup` | Remove from the persistent guild tracker any guild that no longer has real players online. Reports how many guilds were removed and how many remain tracked. |
 
 ## Troubleshooting
 

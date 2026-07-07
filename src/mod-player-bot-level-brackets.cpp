@@ -1509,8 +1509,143 @@ public:
 };
 
 
+/**
+ * @brief Executes a full bot distribution cycle on demand.
+ *        Mirrors the periodic OnUpdate logic. Passing a non-null ChatHandler
+ *        routes a brief summary to in-game/console output at the end.
+ */
+static void RunDistributionCycle(ChatHandler* handler)
+{
+    const auto& allPlayers = ObjectAccessor::GetPlayers();
+
+    LoadRealPlayerGuildIds(allPlayers);
+
+    uint32 totalAllianceBots = 0;
+    std::vector<int> allianceActualCounts(g_NumRanges, 0);
+    std::vector<std::vector<Player*>> allianceBotsByRange(g_NumRanges);
+
+    uint32 totalHordeBots = 0;
+    std::vector<int> hordeActualCounts(g_NumRanges, 0);
+    std::vector<std::vector<Player*>> hordeBotsByRange(g_NumRanges);
+
+    for (auto const& itr : allPlayers)
+    {
+        Player* player = itr.second;
+        if (!player || !player->IsInWorld())
+            continue;
+        if (!IsPlayerBot(player) || !IsPlayerRandomBot(player))
+            continue;
+        if (IsBotExcluded(player))
+            continue;
+        if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(player))
+            continue;
+        if (g_IgnoreFriendListed && BotInFriendList(player))
+            continue;
+        if (g_IgnoreArenaTeamBots && BotInArenaTeam(player))
+            continue;
+
+        if (IsAlliancePlayerBot(player))
+        {
+            totalAllianceBots++;
+            int rangeIndex = GetOrFlagPlayerBracket(player);
+            if (rangeIndex >= 0)
+            {
+                allianceActualCounts[rangeIndex]++;
+                allianceBotsByRange[rangeIndex].push_back(player);
+            }
+        }
+        else if (IsHordePlayerBot(player))
+        {
+            totalHordeBots++;
+            int rangeIndex = GetOrFlagPlayerBracket(player);
+            if (rangeIndex >= 0)
+            {
+                hordeActualCounts[rangeIndex]++;
+                hordeBotsByRange[rangeIndex].push_back(player);
+            }
+        }
+    }
+
+    auto redistribute = [](
+        int totalBots,
+        std::vector<int>& actualCounts,
+        std::vector<std::vector<Player*>>& botsByRange,
+        std::vector<LevelRangeConfig>& factionRanges)
+    {
+        if (totalBots == 0)
+            return;
+
+        std::vector<int> desiredCounts(g_NumRanges, 0);
+        for (int i = 0; i < g_NumRanges; ++i)
+            desiredCounts[i] = static_cast<int>(round((factionRanges[i].desiredPercent / 100.0) * totalBots));
+
+        for (int i = 0; i < g_NumRanges; ++i)
+        {
+            std::vector<Player*> safeBots, flaggedBots;
+            for (Player* bot : botsByRange[i])
+            {
+                if (IsBotSafeForLevelReset(bot)) safeBots.push_back(bot);
+                else                              flaggedBots.push_back(bot);
+            }
+
+            std::vector<int> targetRanges;
+            for (int j = 0; j < g_NumRanges; ++j)
+                if (actualCounts[j] < desiredCounts[j])
+                    targetRanges.push_back(j);
+
+            size_t targetIdx = 0;
+            while (actualCounts[i] > desiredCounts[i] && !safeBots.empty() && targetIdx < targetRanges.size())
+            {
+                Player* bot = safeBots.back();
+                safeBots.pop_back();
+                int targetRange = targetRanges[targetIdx];
+                if (actualCounts[targetRange] >= desiredCounts[targetRange])
+                { targetIdx++; continue; }
+                EnqueuePendingReset(bot->GetGUID(), targetRange, factionRanges.data());
+                actualCounts[i]--;
+                actualCounts[targetRange]++;
+                if (actualCounts[targetRange] >= desiredCounts[targetRange])
+                    targetIdx++;
+            }
+
+            targetIdx = 0;
+            while (actualCounts[i] > desiredCounts[i] && !flaggedBots.empty() && targetIdx < targetRanges.size())
+            {
+                Player* bot = flaggedBots.back();
+                flaggedBots.pop_back();
+                int targetRange = targetRanges[targetIdx];
+                if (actualCounts[targetRange] >= desiredCounts[targetRange])
+                { targetIdx++; continue; }
+                EnqueuePendingReset(bot->GetGUID(), targetRange, factionRanges.data());
+                actualCounts[i]--;
+                actualCounts[targetRange]++;
+                if (actualCounts[targetRange] >= desiredCounts[targetRange])
+                    targetIdx++;
+            }
+        }
+    };
+
+    redistribute(totalAllianceBots, allianceActualCounts, allianceBotsByRange, g_AllianceLevelRanges);
+    redistribute(totalHordeBots,    hordeActualCounts,    hordeBotsByRange,    g_HordeLevelRanges);
+
+    if (handler)
+    {
+        handler->PSendSysMessage("[BotBrackets] Alliance: %u bots  Horde: %u bots  Pending: %zu",
+                                 totalAllianceBots, totalHordeBots, g_PendingLevelResets.size());
+    }
+}
+
+// Forward declaration so command handlers can call RunDistributionCycle().
+// (Definition is immediately above.)
+
 // -----------------------------------------------------------------------------
 // COMMAND SCRIPT
+//
+//  .botbrackets reload       — Reload configuration from disk.
+//  .botbrackets status       — Print current bracket distribution to chat.
+//  .botbrackets force        — Run a full distribution cycle immediately.
+//  .botbrackets pending      — Show the size and oldest entry of the pending queue.
+//  .botbrackets guildcleanup — Remove offline-only guilds from the persistent tracker.
 // -----------------------------------------------------------------------------
 class BotLevelBracketsCommandScript : public CommandScript
 {
@@ -1519,17 +1654,169 @@ public:
 
     ChatCommandTable GetCommands() const override
     {
+        static ChatCommandTable botBracketsTable =
+        {
+            { "reload",       HandleReloadConfig,   SEC_ADMINISTRATOR, Console::Yes },
+            { "status",       HandleStatus,         SEC_ADMINISTRATOR, Console::Yes },
+            { "force",        HandleForce,          SEC_ADMINISTRATOR, Console::Yes },
+            { "pending",      HandlePending,        SEC_ADMINISTRATOR, Console::Yes },
+            { "guildcleanup", HandleGuildCleanup,   SEC_ADMINISTRATOR, Console::Yes },
+        };
         static ChatCommandTable commandTable =
         {
-            { "reload", HandleReloadConfig, SEC_ADMINISTRATOR, Console::No }
+            { "botbrackets", botBracketsTable }
         };
         return commandTable;
     }
 
+    // .botbrackets reload
     static bool HandleReloadConfig(ChatHandler* handler)
     {
         LoadBotLevelBracketsConfig();
-        handler->SendSysMessage("Bot level brackets config reloaded.");
+        handler->SendSysMessage("[BotBrackets] Configuration reloaded.");
+        return true;
+    }
+
+    // .botbrackets status
+    // Scans online bots and prints actual vs desired counts per bracket.
+    static bool HandleStatus(ChatHandler* handler)
+    {
+        if (!g_BotLevelBracketsEnabled)
+        {
+            handler->SendSysMessage("[BotBrackets] Module is disabled.");
+            return true;
+        }
+
+        uint32 totalAlliance = 0, totalHorde = 0;
+        std::vector<int> allianceCounts(g_NumRanges, 0);
+        std::vector<int> hordeCounts(g_NumRanges, 0);
+
+        const auto& allPlayers = ObjectAccessor::GetPlayers();
+        for (const auto& itr : allPlayers)
+        {
+            Player* player = itr.second;
+            if (!player || !player->IsInWorld())
+                continue;
+            if (!IsPlayerBot(player) || !IsPlayerRandomBot(player))
+                continue;
+            if (IsBotExcluded(player))
+                continue;
+            if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(player))
+                continue;
+            if (g_IgnoreFriendListed && BotInFriendList(player))
+                continue;
+            if (g_IgnoreArenaTeamBots && BotInArenaTeam(player))
+                continue;
+
+            int rangeIndex = GetLevelRangeIndex(player->GetLevel(), player->GetTeamId());
+            if (IsAlliancePlayerBot(player))
+            {
+                totalAlliance++;
+                if (rangeIndex >= 0) allianceCounts[rangeIndex]++;
+            }
+            else if (IsHordePlayerBot(player))
+            {
+                totalHorde++;
+                if (rangeIndex >= 0) hordeCounts[rangeIndex]++;
+            }
+        }
+
+        handler->PSendSysMessage("[BotBrackets] Status — Alliance: %u bots, Horde: %u bots", totalAlliance, totalHorde);
+        handler->PSendSysMessage("%-4s %-10s %-8s %-8s %-8s %-8s",
+                                 "Idx", "Range", "A.Des", "A.Act", "H.Des", "H.Act");
+
+        for (int i = 0; i < g_NumRanges; ++i)
+        {
+            int aDes = (totalAlliance > 0)
+                ? static_cast<int>(round((g_AllianceLevelRanges[i].desiredPercent / 100.0) * totalAlliance))
+                : 0;
+            int hDes = (totalHorde > 0)
+                ? static_cast<int>(round((g_HordeLevelRanges[i].desiredPercent / 100.0) * totalHorde))
+                : 0;
+
+            handler->PSendSysMessage("%-4d %3u-%-6u %-8d %-8d %-8d %-8d",
+                                     i + 1,
+                                     g_AllianceLevelRanges[i].lower,
+                                     g_AllianceLevelRanges[i].upper,
+                                     aDes,
+                                     allianceCounts[i],
+                                     hDes,
+                                     hordeCounts[i]);
+        }
+
+        handler->PSendSysMessage("[BotBrackets] Pending queue: %zu entries.", g_PendingLevelResets.size());
+        return true;
+    }
+
+    // .botbrackets force
+    // Triggers an immediate distribution cycle (same logic as the periodic OnUpdate cycle).
+    static bool HandleForce(ChatHandler* handler)
+    {
+        if (!g_BotLevelBracketsEnabled)
+        {
+            handler->SendSysMessage("[BotBrackets] Module is disabled.");
+            return true;
+        }
+        handler->SendSysMessage("[BotBrackets] Forcing distribution cycle...");
+        RunDistributionCycle(handler);
+        handler->SendSysMessage("[BotBrackets] Distribution cycle complete.");
+        return true;
+    }
+
+    // .botbrackets pending
+    // Displays pending queue size, oldest entry age (if TTL configured), and the cap.
+    static bool HandlePending(ChatHandler* handler)
+    {
+        size_t queueSize = g_PendingLevelResets.size();
+        handler->PSendSysMessage("[BotBrackets] Pending queue: %zu entries.", queueSize);
+
+        if (g_MaxPendingQueueSize > 0)
+            handler->PSendSysMessage("[BotBrackets] Queue cap: %u.", g_MaxPendingQueueSize);
+        else
+            handler->SendSysMessage("[BotBrackets] Queue cap: unlimited.");
+
+        if (g_PendingQueueTTL > 0)
+            handler->PSendSysMessage("[BotBrackets] TTL: %us per entry.", g_PendingQueueTTL);
+        else
+            handler->SendSysMessage("[BotBrackets] TTL: disabled.");
+
+        if (queueSize == 0)
+        {
+            handler->SendSysMessage("[BotBrackets] Queue is empty.");
+            return true;
+        }
+
+        // Find the oldest and newest entry by enqueuedAt timestamp.
+        uint32 oldest = std::numeric_limits<uint32>::max();
+        uint32 newest = 0;
+        for (const auto& kv : g_PendingLevelResets)
+        {
+            if (kv.second.enqueuedAt < oldest) oldest = kv.second.enqueuedAt;
+            if (kv.second.enqueuedAt > newest) newest = kv.second.enqueuedAt;
+        }
+
+        uint32 now = static_cast<uint32>(time(nullptr));
+        handler->PSendSysMessage("[BotBrackets] Oldest entry: %us ago. Newest: %us ago.",
+                                 now - oldest, now - newest);
+        return true;
+    }
+
+    // .botbrackets guildcleanup
+    // Removes from the persistent guild tracker any guild that has no online real players.
+    static bool HandleGuildCleanup(ChatHandler* handler)
+    {
+        if (!g_IgnoreGuildBotsWithRealPlayers)
+        {
+            handler->SendSysMessage("[BotBrackets] Guild bot exclusion is disabled. Cleanup has no effect.");
+            return true;
+        }
+
+        size_t before = g_PersistentRealPlayerGuildIds.size();
+        CleanupGuildTracker();
+        size_t after = g_PersistentRealPlayerGuildIds.size();
+
+        handler->PSendSysMessage("[BotBrackets] Guild cleanup complete. Removed %zu guild(s). %zu guild(s) remain tracked.",
+                                 before - after, after);
         return true;
     }
 };
