@@ -56,13 +56,13 @@ This module reads the global Playerbots level limits and respects them when clam
    Characters database (persistent guild tracker):
 
    ```bash
-   mysql -u <user> -p <characters_db> < data/sql/characters/base/2025_07_31_bot_level_brackets_guild_tracker.sql
+   mysql -u <user> -p <characters_db> < data/sql/db-characters/2025_07_31_bot_level_brackets_guild_tracker.sql
    ```
 
    World database (admin command registration):
 
    ```bash
-   mysql -u <user> -p <world_db> < data/sql/db-world/base/2025_07_31_bot_level_brackets_commands.sql
+   mysql -u <user> -p <world_db> < data/sql/db-world/2025_07_31_bot_level_brackets_commands.sql
    ```
 
 3. **Recompile AzerothCore**:
