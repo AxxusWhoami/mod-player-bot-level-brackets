@@ -51,16 +51,18 @@ This module reads the global Playerbots level limits and respects them when clam
    git clone https://github.com/DustinHendrickson/mod-player-bot-level-brackets.git
    ```
 
-2. **Apply the database migration** for the persistent guild tracker table. The SQL file is located at:
+2. **Apply the database migrations.**
 
-   ```
-   data/sql/characters/base/2025_07_31_bot_level_brackets_guild_tracker.sql
-   ```
-
-   Apply it to your characters database:
+   Characters database (persistent guild tracker):
 
    ```bash
    mysql -u <user> -p <characters_db> < data/sql/characters/base/2025_07_31_bot_level_brackets_guild_tracker.sql
+   ```
+
+   World database (admin command registration):
+
+   ```bash
+   mysql -u <user> -p <world_db> < data/sql/db-world/base/2025_07_31_bot_level_brackets_commands.sql
    ```
 
 3. **Recompile AzerothCore**:
