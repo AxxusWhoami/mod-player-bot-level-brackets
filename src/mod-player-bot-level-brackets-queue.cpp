@@ -39,7 +39,6 @@ void ProcessPendingLevelResets()
         if (g_FlaggedProcessLimit > 0 && processed >= g_FlaggedProcessLimit)
             break;
 
-        // TTL check: drop stale entries.
         if (g_PendingQueueTTL > 0 && (now - it->second.enqueuedAt) > g_PendingQueueTTL)
         {
             if (g_BotDistFullDebugMode)
@@ -87,25 +86,6 @@ void ProcessPendingLevelResets()
         {
             it = g_PendingLevelResets.erase(it);
             continue;
-        }
-
-        if (Group* group = bot->GetGroup())
-        {
-            bool hasRealPlayer = false;
-            for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-            {
-                Player* member = ref->GetSource();
-                if (member && member->IsInWorld() && !IsPlayerBot(member))
-                {
-                    hasRealPlayer = true;
-                    break;
-                }
-            }
-            if (hasRealPlayer)
-            {
-                it = g_PendingLevelResets.erase(it);
-                continue;
-            }
         }
 
         if (IsBotSafeForLevelReset(bot))

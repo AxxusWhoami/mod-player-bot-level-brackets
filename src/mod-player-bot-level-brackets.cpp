@@ -197,12 +197,6 @@ public:
 
 // =============================================================================
 // COMMAND SCRIPT
-//
-//  .botbrackets reload       — Reload configuration from disk.
-//  .botbrackets status       — Print current bracket distribution to chat.
-//  .botbrackets force        — Run a full distribution cycle immediately.
-//  .botbrackets pending      — Show the size and oldest entry of the pending queue.
-//  .botbrackets guildcleanup — Remove offline-only guilds from the persistent tracker.
 // =============================================================================
 class BotLevelBracketsCommandScript : public CommandScript
 {

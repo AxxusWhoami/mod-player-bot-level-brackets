@@ -8,53 +8,38 @@
  */
 void ClampAndBalanceBrackets()
 {
-    for (uint8 i = 0; i < g_NumRanges; ++i)
+    auto clampRanges = [](std::vector<LevelRangeConfig>& ranges)
     {
-        if (g_AllianceLevelRanges[i].lower < g_RandomBotMinLevel)
-            g_AllianceLevelRanges[i].lower = g_RandomBotMinLevel;
-        if (g_AllianceLevelRanges[i].upper > g_RandomBotMaxLevel)
-            g_AllianceLevelRanges[i].upper = g_RandomBotMaxLevel;
-        if (g_AllianceLevelRanges[i].lower > g_AllianceLevelRanges[i].upper)
-            g_AllianceLevelRanges[i].desiredPercent = 0;
-    }
-    for (uint8 i = 0; i < g_NumRanges; ++i)
-    {
-        if (g_HordeLevelRanges[i].lower < g_RandomBotMinLevel)
-            g_HordeLevelRanges[i].lower = g_RandomBotMinLevel;
-        if (g_HordeLevelRanges[i].upper > g_RandomBotMaxLevel)
-            g_HordeLevelRanges[i].upper = g_RandomBotMaxLevel;
-        if (g_HordeLevelRanges[i].lower > g_HordeLevelRanges[i].upper)
-            g_HordeLevelRanges[i].desiredPercent = 0;
-    }
+        for (uint8 i = 0; i < g_NumRanges; ++i)
+        {
+            if (ranges[i].lower < g_RandomBotMinLevel)
+                ranges[i].lower = g_RandomBotMinLevel;
+            if (ranges[i].upper > g_RandomBotMaxLevel)
+                ranges[i].upper = g_RandomBotMaxLevel;
+            if (ranges[i].lower > ranges[i].upper)
+                ranges[i].desiredPercent = 0;
+        }
+    };
+    clampRanges(g_AllianceLevelRanges);
+    clampRanges(g_HordeLevelRanges);
 
-    uint32 totalAlliance = 0, totalHorde = 0;
-    for (uint8 i = 0; i < g_NumRanges; ++i)
+    auto balanceRanges = [](std::vector<LevelRangeConfig>& ranges, const char* factionLabel)
     {
-        totalAlliance += g_AllianceLevelRanges[i].desiredPercent;
-        totalHorde    += g_HordeLevelRanges[i].desiredPercent;
-    }
-
-    if (totalAlliance != 100 && totalAlliance > 0)
-    {
+        uint32 total = 0;
+        for (uint8 i = 0; i < g_NumRanges; ++i)
+            total += ranges[i].desiredPercent;
+        if (total == 100 || total == 0)
+            return;
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Alliance pct sum is {} (expected 100). Auto adjusting.", totalAlliance);
-        int missing = 100 - totalAlliance;
+            LOG_INFO("server.loading", "[BotLevelBrackets] {} pct sum is {} (expected 100). Auto adjusting.", factionLabel, total);
+        int missing = 100 - static_cast<int>(total);
         while (missing > 0)
             for (uint8 i = 0; i < g_NumRanges && missing > 0; ++i)
-                if (g_AllianceLevelRanges[i].lower <= g_AllianceLevelRanges[i].upper && g_AllianceLevelRanges[i].desiredPercent > 0)
-                { g_AllianceLevelRanges[i].desiredPercent++; missing--; }
-    }
-
-    if (totalHorde != 100 && totalHorde > 0)
-    {
-        if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Horde pct sum is {} (expected 100). Auto adjusting.", totalHorde);
-        int missing = 100 - totalHorde;
-        while (missing > 0)
-            for (uint8 i = 0; i < g_NumRanges && missing > 0; ++i)
-                if (g_HordeLevelRanges[i].lower <= g_HordeLevelRanges[i].upper && g_HordeLevelRanges[i].desiredPercent > 0)
-                { g_HordeLevelRanges[i].desiredPercent++; missing--; }
-    }
+                if (ranges[i].lower <= ranges[i].upper && ranges[i].desiredPercent > 0)
+                { ranges[i].desiredPercent++; missing--; }
+    };
+    balanceRanges(g_AllianceLevelRanges, "Alliance");
+    balanceRanges(g_HordeLevelRanges, "Horde");
 }
 
 
@@ -90,7 +75,7 @@ void LoadBotLevelBracketsConfig()
     {
         s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
         if (!s.empty())
-            g_ExcludeBotNames.push_back(s);
+            g_ExcludeBotNames.insert(s);
     }
 
     g_RandomBotMinLevel = static_cast<uint8>(sConfigMgr->GetOption<uint32>("AiPlayerbot.RandomBotMinLevel", 1));

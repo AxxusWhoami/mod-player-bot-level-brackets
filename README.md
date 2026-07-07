@@ -200,22 +200,6 @@ BotLevelBrackets.Alliance.Range8.Pct   = 10
 # ... adjust remaining ranges so the sum is still 100
 ```
 
-## Admin Commands
-
-The module registers the following in-game command. It requires the `Administrator` security level and cannot be used from the console.
-
-| Command | Description |
-|---|---|
-| `reload` | Reloads the module configuration from disk without restarting the server. |
-
-Usage in-game:
-
-```
-.reload
-```
-
-> The exact command path depends on how the command is registered in your AzerothCore command table. Check your server's command list if the above does not work.
-
 ## Bot Safety Checks
 
 Before a level reset is applied, the module verifies that the bot:

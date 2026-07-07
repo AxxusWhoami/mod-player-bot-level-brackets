@@ -1,5 +1,11 @@
 #include "mod-player-bot-level-brackets-internal.h"
 
+static inline bool IsBotInvalidOrLeaving(Player* bot)
+{
+    return !bot || !bot->IsInWorld() || !bot->GetSession()
+        || bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld();
+}
+
 bool IsPlayerBot(Player* player)
 {
     if (!player)
@@ -27,7 +33,7 @@ bool IsHordePlayerBot(Player* bot)
 
 bool BotInGuildWithRealPlayer(Player* bot)
 {
-    if (!bot || !bot->IsInWorld() || !bot->GetSession() || bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
+    if (IsBotInvalidOrLeaving(bot))
         return false;
     uint32 guildId = bot->GetGuildId();
     if (guildId == 0)
@@ -37,7 +43,7 @@ bool BotInGuildWithRealPlayer(Player* bot)
 
 bool BotInFriendList(Player* bot)
 {
-    if (!bot || !bot->IsInWorld() || !bot->GetSession() || bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
+    if (IsBotInvalidOrLeaving(bot))
         return false;
     bool found = g_SocialFriendsList.count(bot->GetGUID().GetRawValue()) > 0;
     if (found && g_BotDistFullDebugMode)
@@ -114,9 +120,5 @@ bool IsBotExcluded(Player* bot)
 {
     if (!bot)
         return false;
-    const std::string& name = bot->GetName();
-    for (const auto& excluded : g_ExcludeBotNames)
-        if (excluded == name)
-            return true;
-    return false;
+    return g_ExcludeBotNames.count(bot->GetName()) > 0;
 }

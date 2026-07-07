@@ -1,5 +1,25 @@
 #include "mod-player-bot-level-brackets-internal.h"
 
+static std::unordered_set<uint32> CollectCurrentRealPlayerGuildIds()
+{
+    std::unordered_set<uint32> guilds;
+    const auto& allPlayers = ObjectAccessor::GetPlayers();
+    for (const auto& itr : allPlayers)
+    {
+        Player* player = itr.second;
+        if (!player || !player->IsInWorld())
+            continue;
+        if (!IsPlayerBot(player))
+        {
+            uint32 guildId = player->GetGuildId();
+            if (guildId != 0)
+                guilds.insert(guildId);
+        }
+    }
+    return guilds;
+}
+
+
 void LoadSocialFriendList()
 {
     g_SocialFriendsList.clear();
@@ -75,36 +95,27 @@ void UpdatePersistentGuildTracker()
     if (g_BotDistFullDebugMode)
         LOG_INFO("server.loading", "[BotLevelBrackets] Starting additive-only persistent guild tracker update...");
 
-    std::unordered_set<uint32> currentRealPlayerGuilds;
-    const auto& allPlayers = ObjectAccessor::GetPlayers();
-    for (const auto& itr : allPlayers)
-    {
-        Player* player = itr.second;
-        if (!player || !player->IsInWorld())
-            continue;
-        if (!IsPlayerBot(player))
-        {
-            uint32 guildId = player->GetGuildId();
-            if (guildId != 0)
-                currentRealPlayerGuilds.insert(guildId);
-        }
-    }
+    std::unordered_set<uint32> currentRealPlayerGuilds = CollectCurrentRealPlayerGuildIds();
 
-    uint32 addedCount = 0;
+    uint32 processedCount = 0;
     for (uint32 guildId : currentRealPlayerGuilds)
     {
-        CharacterDatabase.Execute(
-            "REPLACE INTO bot_level_brackets_guild_tracker (guild_id, has_real_players) VALUES ({}, 1)",
-            guildId);
-        g_PersistentRealPlayerGuildIds.insert(guildId);
-        addedCount++;
+        if (g_PersistentRealPlayerGuildIds.count(guildId) == 0)
+        {
+            CharacterDatabase.Execute(
+                "INSERT INTO bot_level_brackets_guild_tracker (guild_id, has_real_players) VALUES ({}, 1)"
+                " ON DUPLICATE KEY UPDATE has_real_players = 1",
+                guildId);
+            g_PersistentRealPlayerGuildIds.insert(guildId);
+            processedCount++;
+        }
     }
 
     if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
     {
         LOG_INFO("server.loading",
-                 "[BotLevelBrackets] Additive guild tracker update complete. {} guilds processed, {} total tracked.",
-                 addedCount, g_PersistentRealPlayerGuildIds.size());
+                 "[BotLevelBrackets] Additive guild tracker update complete. {} new guild(s) persisted, {} total tracked.",
+                 processedCount, g_PersistentRealPlayerGuildIds.size());
     }
 }
 
@@ -114,20 +125,7 @@ void CleanupGuildTracker()
     if (g_BotDistFullDebugMode)
         LOG_INFO("server.loading", "[BotLevelBrackets] Starting guild tracker cleanup...");
 
-    std::unordered_set<uint32> currentRealPlayerGuilds;
-    const auto& allPlayers = ObjectAccessor::GetPlayers();
-    for (const auto& itr : allPlayers)
-    {
-        Player* player = itr.second;
-        if (!player || !player->IsInWorld())
-            continue;
-        if (!IsPlayerBot(player))
-        {
-            uint32 guildId = player->GetGuildId();
-            if (guildId != 0)
-                currentRealPlayerGuilds.insert(guildId);
-        }
-    }
+    std::unordered_set<uint32> currentRealPlayerGuilds = CollectCurrentRealPlayerGuildIds();
 
     std::vector<uint32> guildsToRemove;
     for (uint32 trackedGuildId : g_PersistentRealPlayerGuildIds)

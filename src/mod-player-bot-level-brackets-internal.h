@@ -82,7 +82,7 @@ extern float  g_RealPlayerWeight;
 extern bool   g_SyncFactions;
 
 extern std::unordered_set<uint64>                            g_SocialFriendsList;
-extern std::vector<std::string>                              g_ExcludeBotNames;
+extern std::unordered_set<std::string>                       g_ExcludeBotNames;
 extern std::unordered_set<uint32>                            g_RealPlayerGuildIds;
 extern std::unordered_set<uint32>                            g_PersistentRealPlayerGuildIds;
 extern std::unordered_map<ObjectGuid, PendingResetEntry>     g_PendingLevelResets;

@@ -106,16 +106,18 @@ void AdjustBotToRange(Player* bot, int targetRangeIndex, const LevelRangeConfig*
 
 int GetOrFlagPlayerBracket(Player* player)
 {
-    if (IsPlayerBot(player) && IsBotExcluded(player))
+    bool isBot = IsPlayerBot(player);
+
+    if (isBot && IsBotExcluded(player))
         return -1;
 
-    if (IsPlayerBot(player) && g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(player))
+    if (isBot && g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(player))
         return -1;
 
-    if (IsPlayerBot(player) && g_IgnoreArenaTeamBots && BotInArenaTeam(player))
+    if (isBot && g_IgnoreArenaTeamBots && BotInArenaTeam(player))
         return -1;
 
-    if (IsPlayerBot(player))
+    if (isBot)
     {
         if (Group* group = player->GetGroup())
         {
@@ -303,45 +305,32 @@ static void RedistributeFaction(
             if (actualCounts[j] < desiredCounts[j])
                 targetRanges.push_back(j);
 
-        size_t targetIdx = 0;
-        while (actualCounts[i] > desiredCounts[i] && !safeBots.empty() && targetIdx < targetRanges.size())
+        auto drainBatch = [&](std::vector<Player*>& bots, const char* batchLabel)
         {
-            Player* bot = safeBots.back();
-            safeBots.pop_back();
-            int targetRange = targetRanges[targetIdx];
-            if (actualCounts[targetRange] >= desiredCounts[targetRange])
-            { targetIdx++; continue; }
+            size_t targetIdx = 0;
+            while (actualCounts[i] > desiredCounts[i] && !bots.empty() && targetIdx < targetRanges.size())
+            {
+                Player* bot = bots.back();
+                bots.pop_back();
+                int targetRange = targetRanges[targetIdx];
+                if (actualCounts[targetRange] >= desiredCounts[targetRange])
+                { targetIdx++; continue; }
 
-            EnqueuePendingReset(bot->GetGUID(), targetRange, factionRanges.data());
-            if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading", "[BotLevelBrackets] {} bot '{}' enqueued for range {}-{}.",
-                         factionLabel, bot->GetName(), factionRanges[targetRange].lower, factionRanges[targetRange].upper);
+                EnqueuePendingReset(bot->GetGUID(), targetRange, factionRanges.data());
+                if (g_BotDistFullDebugMode)
+                    LOG_INFO("server.loading", "[BotLevelBrackets] {} {}bot '{}' enqueued for range {}-{}.",
+                             factionLabel, batchLabel,
+                             bot->GetName(), factionRanges[targetRange].lower, factionRanges[targetRange].upper);
 
-            actualCounts[i]--;
-            actualCounts[targetRange]++;
-            if (actualCounts[targetRange] >= desiredCounts[targetRange])
-                targetIdx++;
-        }
+                actualCounts[i]--;
+                actualCounts[targetRange]++;
+                if (actualCounts[targetRange] >= desiredCounts[targetRange])
+                    targetIdx++;
+            }
+        };
 
-        targetIdx = 0;
-        while (actualCounts[i] > desiredCounts[i] && !flaggedBots.empty() && targetIdx < targetRanges.size())
-        {
-            Player* bot = flaggedBots.back();
-            flaggedBots.pop_back();
-            int targetRange = targetRanges[targetIdx];
-            if (actualCounts[targetRange] >= desiredCounts[targetRange])
-            { targetIdx++; continue; }
-
-            EnqueuePendingReset(bot->GetGUID(), targetRange, factionRanges.data());
-            if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading", "[BotLevelBrackets] {} flagged bot '{}' enqueued for range {}-{}.",
-                         factionLabel, bot->GetName(), factionRanges[targetRange].lower, factionRanges[targetRange].upper);
-
-            actualCounts[i]--;
-            actualCounts[targetRange]++;
-            if (actualCounts[targetRange] >= desiredCounts[targetRange])
-                targetIdx++;
-        }
+        drainBatch(safeBots, "");
+        drainBatch(flaggedBots, "flagged ");
     }
 }
 
