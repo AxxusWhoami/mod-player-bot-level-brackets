@@ -4,218 +4,255 @@
   <img src="./icon.png" alt="Bot Level Brackets Icon" title="Bot Level Brackets Icon">
 </p>
 
-> **Disclaimer:** This module requires the [Playerbots module](https://github.com/liyunfan1223/mod-playerbots). Please ensure that the Playerbots module is installed and running before using this module.
+> **Disclaimer:** This module requires the [Playerbots module](https://github.com/liyunfan1223/mod-playerbots). Ensure that the Playerbots module is installed and running before using this module.
 
-Overview
---------
-The Bot Level Brackets module for AzerothCore ensures an even spread of player bots across configurable level ranges (brackets). It periodically monitors bot levels and automatically adjusts them by transferring bots from overpopulated brackets to those with a deficit. During adjustments, bots are run through the normal Playerbots Randomize function, clearing and restoring them based on their new level. Bots that are not immediately safe for level reset (for example, those in combat or engaged in other activities) are flagged for pending adjustment and processed later when they become safe. Additionally, Death Knight bots are safeguarded to never be assigned a level below 55.
+## Overview
 
-Features
---------
-- **Configurable Faction-Specific Level Brackets:**  
-  Define level brackets for Alliance and Horde bots with configurable lower and upper bounds.
-- **Desired Percentage Distribution:**  
-  Specify a desired percentage for bots in each bracket. The percentages for each faction must sum to 100.
-- **Dynamic Bot Adjustment:**  
-  Bots in overpopulated brackets are adjusted to a random level within a bracket with a deficit.
-- **Death Knight Level Safeguard:**  
-  Death Knight bots are enforced a minimum level of 55.
-- **Guild Bot Exclusion:**  
-  When enabled, bots that are in a guild with at least one real (non-bot) player are excluded from bot bracket calculations and will not be adjusted. This feature now uses persistent database tracking to work for both online and offline real players.
-- **Friend List Exclusion:**  
-  When enabled, bots that are on real players' friend lists are excluded from level bracket adjustments.
-- **Dynamic Distribution:**  
-  Optionally enable dynamic recalculation of bot distribution percentages based on the number of non-bot players present in each bracket.
-- **Sync Factions Bracket:** 
-  Requires Dynamic Distribution to be on. Optionally enable synchronized bracket and weighting logic between Alliance and Horde. When enabled, both bracket range definitions must match exactly for both factions and real player activity from either faction influences bot bracket distribution for both factions.
-- **Debug Modes:**  
-  Full and Lite debug modes provide detailed logging for troubleshooting and monitoring bot adjustments.
+The Bot Level Brackets module for AzerothCore ensures an even spread of random player bots across configurable level ranges (brackets). It periodically monitors bot levels and automatically redistributes them from overpopulated brackets to those with a deficit by running each bot through the standard Playerbots randomization function, which resets gear, talents and abilities to match the new level.
 
-Minimum and Maximum Bot Level Support
-----------------------------------------
-This module supports setting minimum and maximum levels for random bots via Playerbots options:
-- **AiPlayerbot.RandomBotMinLevel:** Default is 1.
-- **AiPlayerbot.RandomBotMaxLevel:** Default is 80.
+Bots that cannot be safely reset at a given moment (for example, those in combat, in a battleground, in flight, or grouped with real players) are flagged and retried on a shorter interval until they become safe. Death Knight bots are always protected from being assigned a level below 55.
 
-> **Warning:** If you configure the maximum bot level to a value below 55, ensure that Death Knight bots are disabled.
+## Features
 
-Installation
-------------
-1. **Clone the Module**  
-   Ensure the AzerothCore Playerbots fork is installed and running. Clone the module into your AzerothCore modules directory:
-   
-       cd /path/to/azerothcore/modules
-       git clone https://github.com/DustinHendrickson/mod-player-bot-level-brackets.git
+- **Configurable faction-specific level brackets** — define independent level ranges and target percentages for Alliance and Horde bots.
+- **Desired percentage distribution** — specify how much of the bot population should occupy each bracket; percentages are auto-balanced to sum to 100.
+- **Dynamic distribution** — optionally let real player activity shift bracket weights so bots naturally follow where players are levelling.
+- **Faction synchronization** — optionally unify bracket definitions and real-player weighting across both factions.
+- **Pending reset queue** — bots that fail safety checks are queued and retried automatically, with a configurable per-cycle process limit.
+- **Death Knight safeguard** — DK bots are never assigned to a bracket whose upper bound is below level 55.
+- **Guild bot exclusion** — bots sharing a guild with any real player are excluded from adjustments; guild membership is tracked persistently in the database so it survives player logouts.
+- **Friend list exclusion** — bots on any real player's friend list are excluded from level adjustments.
+- **Arena team exclusion** — bots that are members of an arena team are excluded from level adjustments.
+- **Name-based exclusion** — specific bots can be excluded by name via a comma-separated configuration list.
+- **Hot-reload command** — reload the module configuration in-game without restarting the server.
+- **Full and lite debug modes** — detailed server log output for monitoring and troubleshooting.
 
-2. **Recompile AzerothCore**  
-   Rebuild the project with the new module:
-   
-       cd /path/to/azerothcore
-       mkdir build && cd build
-       cmake ..
-       make -j$(nproc)
+## Minimum and Maximum Bot Level Support
 
-3. **Configure the Module**  
-   Rename the configuration file:
-   
-       mv /path/to/azerothcore/modules/mod_player_bot_level_brackets.conf.dist /path/to/azerothcore/modules/mod_player_bot_level_brackets.conf
+This module reads the global Playerbots level limits and respects them when clamping brackets:
 
-4. **Restart the Server**  
-   Launch the world server:
-   
-       ./worldserver
+- `AiPlayerbot.RandomBotMinLevel` — default `1`
+- `AiPlayerbot.RandomBotMaxLevel` — default `80`
 
-Configuration Options
----------------------
-Customize the module’s behavior by editing the `mod_player_bot_level_brackets.conf` file. The configuration options are split into global settings and faction-specific level bracket settings.
+> **Warning:** If `AiPlayerbot.RandomBotMaxLevel` is set below 55, ensure that Death Knight bots are disabled in your Playerbots configuration.
+
+## Requirements
+
+- AzerothCore with the [Playerbots](https://github.com/liyunfan1223/mod-playerbots) module.
+- A MariaDB / MySQL database for the characters schema (used by the persistent guild tracker).
+
+## Installation
+
+1. **Clone the module** into your AzerothCore modules directory:
+
+   ```bash
+   cd /path/to/azerothcore/modules
+   git clone https://github.com/DustinHendrickson/mod-player-bot-level-brackets.git
+   ```
+
+2. **Apply the database migration** for the persistent guild tracker table. The SQL file is located at:
+
+   ```
+   data/sql/characters/base/2025_07_31_bot_level_brackets_guild_tracker.sql
+   ```
+
+   Apply it to your characters database:
+
+   ```bash
+   mysql -u <user> -p <characters_db> < data/sql/characters/base/2025_07_31_bot_level_brackets_guild_tracker.sql
+   ```
+
+3. **Recompile AzerothCore**:
+
+   ```bash
+   cd /path/to/azerothcore
+   mkdir -p build && cd build
+   cmake ..
+   make -j$(nproc)
+   ```
+
+4. **Configure the module** by copying the distribution config and editing it:
+
+   ```bash
+   cp conf/mod_player_bot_level_brackets.conf.dist conf/mod_player_bot_level_brackets.conf
+   ```
+
+   Then edit `mod_player_bot_level_brackets.conf` as described in the [Configuration](#configuration) section below.
+
+5. **Restart the world server**:
+
+   ```bash
+   ./worldserver
+   ```
+
+## Database
+
+The module creates one table in the characters database:
+
+### `bot_level_brackets_guild_tracker`
+
+Persistently tracks which guilds contain at least one real (non-bot) player so that bots in those guilds are protected from level changes even when the real players are offline.
+
+| Column | Type | Description |
+|---|---|---|
+| `guild_id` | `INT UNSIGNED` (PK) | Guild ID from the `guild` table |
+| `has_real_players` | `TINYINT(1)` | `1` if the guild has real players, `0` otherwise |
+| `last_updated` | `TIMESTAMP` | Automatically updated on every write |
+
+The table is populated and kept current by the module itself via the `GuildTrackerUpdateFrequency` timer.
+
+## Configuration
+
+All settings live in `mod_player_bot_level_brackets.conf`.
 
 ### Global Settings
 
-Setting                                      | Description                                                                                                                      | Default | Valid Values
----------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|---------|--------------------
-BotLevelBrackets.Enabled                     | Enables the module.                                                                                                              | 1       | 0 (off) / 1 (on)
-BotLevelBrackets.FullDebugMode               | Enables full debug logging for the Bot Level Brackets module.                                                                    | 0       | 0 (off) / 1 (on)
-BotLevelBrackets.LiteDebugMode               | Enables lite debug logging for the Bot Level Brackets module.                                                                    | 0       | 0 (off) / 1 (on)
-BotLevelBrackets.CheckFrequency              | Frequency (in seconds) at which the bot level distribution check is performed.                                                  | 300     | Positive Integer
-BotLevelBrackets.CheckFlaggedFrequency       | Frequency (in seconds) at which the bot level reset is performed for flagged bots that initially failed safety checks.             | 15      | Positive Integer
-BotLevelBrackets.FlaggedProcessLimit         | Maximum number of flagged bots to process per pending level change step.                                                           | 5       | Positive Integer
-BotLevelBrackets.Dynamic.UseDynamicDistribution | Enables dynamic bot distribution: when on, brackets with more real players get a higher share of bots in their level bracket, based on the weight below. | 0 | 0 (off) / 1 (on)
-BotLevelBrackets.Dynamic.RealPlayerWeight | Controls how much bots "follow" real player activity when dynamic distribution is enabled. 0.0 = bots always spread evenly; 1.0 = minimal effect; 10.0 = heavy effect; higher values = more bots go where players are, but the effect is scaled. | 1.0 | ≥ 0.0 (float)
-BotLevelBrackets.Dynamic.SyncFactions      | Enables synchronized brackets and weighting between Alliance and Horde factions when Dynamic Distribution is also enabled.                        | 0       | 0 (off) / 1 (on)
-BotLevelBrackets.IgnoreFriendListed           | Ignores bots that are on real players' friend lists from any bracket calculations.                                              | 1       | 0 (off) / 1 (on)
-BotLevelBrackets.IgnoreGuildBotsWithRealPlayers | Excludes bots in a guild with at least one real (non-bot) player from adjustments. Uses persistent database tracking for both online and offline real players. | 1       | 0 (disabled) / 1 (enabled)
-BotLevelBrackets.GuildTrackerUpdateFrequency | Frequency (in seconds) at which the persistent guild tracker database is updated to track guilds with real players.           | 600     | Positive Integer
-BotLevelBrackets.NumRanges                     | Number of level brackets used for bot distribution. Both factions must have the same number defined.                             | 9       | Positive Integer
-BotLevelBrackets.ExcludeNames                  | Comma-separated list of case insensitive bot names to exclude from all bracket checks.                                                            |         | String
+| Setting | Description | Default | Valid Values |
+|---|---|---|---|
+| `BotLevelBrackets.Enabled` | Enables or disables the entire module. | `1` | `0` / `1` |
+| `BotLevelBrackets.FullDebugMode` | Enables verbose debug logging for every bot decision. | `0` | `0` / `1` |
+| `BotLevelBrackets.LiteDebugMode` | Enables summary-level debug logging (distribution totals and bracket counts). | `0` | `0` / `1` |
+| `BotLevelBrackets.CheckFrequency` | Seconds between full distribution checks. | `300` | Positive integer |
+| `BotLevelBrackets.CheckFlaggedFrequency` | Seconds between attempts to process queued (pending) level resets. | `15` | Positive integer |
+| `BotLevelBrackets.FlaggedProcessLimit` | Maximum bots processed from the pending queue per cycle. `0` = unlimited. | `5` | Non-negative integer |
+| `BotLevelBrackets.IgnoreGuildBotsWithRealPlayers` | Exclude bots in guilds that have real players (online or offline via DB tracker). | `1` | `0` / `1` |
+| `BotLevelBrackets.GuildTrackerUpdateFrequency` | Seconds between persistent guild tracker database updates. | `600` | Positive integer |
+| `BotLevelBrackets.IgnoreArenaTeamBots` | Exclude bots that are members of any arena team from level adjustments. | `1` | `0` / `1` |
+| `BotLevelBrackets.IgnoreFriendListed` | Exclude bots that appear on any real player's friend list. | `1` | `0` / `1` |
+| `BotLevelBrackets.ExcludeNames` | Comma-separated list of bot names to always exclude from bracket processing (case-insensitive). | `` | String |
+| `BotLevelBrackets.NumRanges` | Total number of level brackets. Must match the number of `RangeX` entries defined below. | `9` | Positive integer |
 
-**IMPORTANT:** If you extend the number of brackets beyond the default 9, you must update both your `mod_player_bot_level_brackets.conf` file and the accompanying `mod_player_bot_level_brackets.conf.dist` file to include configuration lines for the additional ranges (e.g. Range10, Range11, etc.), ensuring that the sum of the Pct values remains 100.
+> **Important:** If you increase `NumRanges` beyond the default of 9, you must add the corresponding `RangeX.Lower`, `RangeX.Upper`, and `RangeX.Pct` lines for both Alliance and Horde sections in your `.conf` file.
 
-### Alliance Level Brackets Configuration
-*The percentages below must sum to 100.*
+### Dynamic Distribution Settings
 
-For each bracket, define:
+| Setting | Description | Default | Valid Values |
+|---|---|---|---|
+| `BotLevelBrackets.Dynamic.UseDynamicDistribution` | Recalculate bracket target percentages each cycle based on where real players are. | `0` | `0` / `1` |
+| `BotLevelBrackets.Dynamic.RealPlayerWeight` | How strongly real player presence inflates a bracket's target share. `0.0` = even distribution always; `1.0` = mild effect; `10–15` = heavy concentration. | `1.0` | Float `>= 0.0` |
+| `BotLevelBrackets.Dynamic.SyncFactions` | Combine both factions' real player counts when computing dynamic weights. Requires identical bracket definitions for Alliance and Horde. Server will not start if brackets mismatch when this is on. | `0` | `0` / `1` |
 
-- **BotLevelBrackets.Alliance.RangeX.Lower:**  
-  The lower bound (inclusive) of bracket X.
-  
-- **BotLevelBrackets.Alliance.RangeX.Upper:**  
-  The upper bound (inclusive) of bracket X.
-  
-- **BotLevelBrackets.Alliance.RangeX.Pct:**  
-  The desired percentage of Alliance bots that should fall into bracket X.
+**Dynamic weight formula (per bracket):**
 
-**EXAMPLE:**  
-The default configuration below defines 9 brackets:
-- Range1 covers levels 1–9  
-  `BotLevelBrackets.Alliance.Range1.Lower = 1`  
-  `BotLevelBrackets.Alliance.Range1.Upper = 9`  
-  `BotLevelBrackets.Alliance.Range1.Pct   = 12`
-- Range2 covers levels 10–19  
-  `BotLevelBrackets.Alliance.Range2.Lower = 10`  
-  `BotLevelBrackets.Alliance.Range2.Upper = 19`  
-  `BotLevelBrackets.Alliance.Range2.Pct   = 11`
-- Range3 covers levels 20–29  
-  `BotLevelBrackets.Alliance.Range3.Lower = 20`  
-  `BotLevelBrackets.Alliance.Range3.Upper = 29`  
-  `BotLevelBrackets.Alliance.Range3.Pct   = 11`
-- Range4 covers levels 30–39  
-  `BotLevelBrackets.Alliance.Range4.Lower = 30`  
-  `BotLevelBrackets.Alliance.Range4.Upper = 39`  
-  `BotLevelBrackets.Alliance.Range4.Pct   = 11`
-- Range5 covers levels 40–49  
-  `BotLevelBrackets.Alliance.Range5.Lower = 40`  
-  `BotLevelBrackets.Alliance.Range5.Upper = 49`  
-  `BotLevelBrackets.Alliance.Range5.Pct   = 11`
-- Range6 covers levels 50–59  
-  `BotLevelBrackets.Alliance.Range6.Lower = 50`  
-  `BotLevelBrackets.Alliance.Range6.Upper = 59`  
-  `BotLevelBrackets.Alliance.Range6.Pct   = 11`
-- Range7 covers levels 60–69  
-  `BotLevelBrackets.Alliance.Range7.Lower = 60`  
-  `BotLevelBrackets.Alliance.Range7.Upper = 69`  
-  `BotLevelBrackets.Alliance.Range7.Pct   = 11`
-- Range8 covers levels 70–79  
-  `BotLevelBrackets.Alliance.Range8.Lower = 70`  
-  `BotLevelBrackets.Alliance.Range8.Upper = 79`  
-  `BotLevelBrackets.Alliance.Range8.Pct   = 11`
-- Range9 covers level 80 only  
-  `BotLevelBrackets.Alliance.Range9.Lower = 80`  
-  `BotLevelBrackets.Alliance.Range9.Upper = 80`  
-  `BotLevelBrackets.Alliance.Range9.Pct   = 11`
+```
+bracket_weight = 1.0 + (RealPlayerWeight × (1 / TotalRealPlayers) × log(1 + RealPlayersInBracket))
+```
 
-To isolate a specific level (e.g., level 60) into its own bracket, set the Lower and Upper for that range to the same value (e.g., 60) and adjust the adjacent ranges accordingly.
+All bracket weights are normalized so that the target percentages always sum to 100.
 
-### Horde Level Brackets Configuration
-*The percentages below must sum to 100.*
+**Reference values for `RealPlayerWeight` (9 equal brackets, 10 real players, 6 in one bracket):**
 
-For each bracket, define:
+| Weight | Bracket with players | Each empty bracket |
+|---|---|---|
+| `0.0` | 11.11% | 11.11% |
+| `1.0` | ~12.77% | ~10.69% |
+| `3.0` | ~15.73% | ~9.93% |
+| `5.0` | ~18.31% | ~9.28% |
 
-- **BotLevelBrackets.Horde.RangeX.Lower:**  
-  The lower bound (inclusive) of bracket X.
-  
-- **BotLevelBrackets.Horde.RangeX.Upper:**  
-  The upper bound (inclusive) of bracket X.
-  
-- **BotLevelBrackets.Horde.RangeX.Pct:**  
-  The desired percentage of Horde bots that should fall into bracket X.
+### Alliance Level Brackets
 
-**EXAMPLE:**  
-The default configuration below defines 9 brackets:
-- Range1 covers levels 1–9  
-  `BotLevelBrackets.Horde.Range1.Lower = 1`  
-  `BotLevelBrackets.Horde.Range1.Upper = 9`  
-  `BotLevelBrackets.Horde.Range1.Pct   = 12`
-- Range2 covers levels 10–19  
-  `BotLevelBrackets.Horde.Range2.Lower = 10`  
-  `BotLevelBrackets.Horde.Range2.Upper = 19`  
-  `BotLevelBrackets.Horde.Range2.Pct   = 11`
-- Range3 covers levels 20–29  
-  `BotLevelBrackets.Horde.Range3.Lower = 20`  
-  `BotLevelBrackets.Horde.Range3.Upper = 29`  
-  `BotLevelBrackets.Horde.Range3.Pct   = 11`
-- Range4 covers levels 30–39  
-  `BotLevelBrackets.Horde.Range4.Lower = 30`  
-  `BotLevelBrackets.Horde.Range4.Upper = 39`  
-  `BotLevelBrackets.Horde.Range4.Pct   = 11`
-- Range5 covers levels 40–49  
-  `BotLevelBrackets.Horde.Range5.Lower = 40`  
-  `BotLevelBrackets.Horde.Range5.Upper = 49`  
-  `BotLevelBrackets.Horde.Range5.Pct   = 11`
-- Range6 covers levels 50–59  
-  `BotLevelBrackets.Horde.Range6.Lower = 50`  
-  `BotLevelBrackets.Horde.Range6.Upper = 59`  
-  `BotLevelBrackets.Horde.Range6.Pct   = 11`
-- Range7 covers levels 60–69  
-  `BotLevelBrackets.Horde.Range7.Lower = 60`  
-  `BotLevelBrackets.Horde.Range7.Upper = 69`  
-  `BotLevelBrackets.Horde.Range7.Pct   = 11`
-- Range8 covers levels 70–79  
-  `BotLevelBrackets.Horde.Range8.Lower = 70`  
-  `BotLevelBrackets.Horde.Range8.Upper = 79`  
-  `BotLevelBrackets.Horde.Range8.Pct   = 11`
-- Range9 covers level 80 only  
-  `BotLevelBrackets.Horde.Range9.Lower = 80`  
-  `BotLevelBrackets.Horde.Range9.Upper = 80`  
-  `BotLevelBrackets.Horde.Range9.Pct   = 11`
+For each bracket `X` (1 through `NumRanges`):
 
-Debugging
----------
-To enable detailed debug logging, update the configuration file with one of the following:
+| Key | Description |
+|---|---|
+| `BotLevelBrackets.Alliance.RangeX.Lower` | Inclusive lower level bound for bracket X. |
+| `BotLevelBrackets.Alliance.RangeX.Upper` | Inclusive upper level bound for bracket X. |
+| `BotLevelBrackets.Alliance.RangeX.Pct` | Desired percentage of Alliance bots in bracket X. All brackets must sum to 100. |
 
-    BotLevelBrackets.FullDebugMode = 1
-    BotLevelBrackets.LiteDebugMode = 1
+**Default (9 brackets, levels 1–80):**
 
-Troubleshooting
----------------
-> **Bots are not randomizing their levels within the range brackets.**  
-> Ensure that in your `playerbots.conf` the option `AiPlayerbot.DisableRandomLevels` is set to false. Otherwise, bots will be reset to the fixed level specified in your Playerbots configuration.
+| Bracket | Levels | Pct |
+|---|---|---|
+| Range1 | 1–9 | 12% |
+| Range2 | 10–19 | 11% |
+| Range3 | 20–29 | 11% |
+| Range4 | 30–39 | 11% |
+| Range5 | 40–49 | 11% |
+| Range6 | 50–59 | 11% |
+| Range7 | 60–69 | 11% |
+| Range8 | 70–79 | 11% |
+| Range9 | 80 | 11% |
 
-License
--------
-This module is released under the GNU GPL v2 license, consistent with AzerothCore's licensing model.
+### Horde Level Brackets
 
-Contribution
-------------
+Identical structure to Alliance. Each bracket uses the keys `BotLevelBrackets.Horde.RangeX.Lower`, `.Upper`, and `.Pct`. The default distribution mirrors the Alliance defaults above.
+
+### Example: Isolating a single level as its own bracket
+
+To give level 60 its own bracket (e.g., to match a TBC-era content spike), increase `NumRanges` to 10 and split the existing Range7:
+
+```ini
+BotLevelBrackets.NumRanges = 10
+
+BotLevelBrackets.Alliance.Range7.Lower = 60
+BotLevelBrackets.Alliance.Range7.Upper = 60
+BotLevelBrackets.Alliance.Range7.Pct   = 11
+
+BotLevelBrackets.Alliance.Range8.Lower = 61
+BotLevelBrackets.Alliance.Range8.Upper = 69
+BotLevelBrackets.Alliance.Range8.Pct   = 10
+# ... adjust remaining ranges so the sum is still 100
+```
+
+## Admin Commands
+
+The module registers the following in-game command. It requires the `Administrator` security level and cannot be used from the console.
+
+| Command | Description |
+|---|---|
+| `reload` | Reloads the module configuration from disk without restarting the server. |
+
+Usage in-game:
+
+```
+.reload
+```
+
+> The exact command path depends on how the command is registered in your AzerothCore command table. Check your server's command list if the above does not work.
+
+## Bot Safety Checks
+
+Before a level reset is applied, the module verifies that the bot:
+
+- Is in the world, alive, and not logging out.
+- Is not in combat.
+- Is not in a battleground, arena, random dungeon, or battleground queue.
+- Is not in flight.
+- Is not grouped with any real player.
+
+Bots that fail any check are placed in the pending queue and retried at the `CheckFlaggedFrequency` interval.
+
+## Debugging
+
+Enable one of the debug modes in the configuration file:
+
+```ini
+BotLevelBrackets.LiteDebugMode = 1   # distribution totals and bracket counts per cycle
+BotLevelBrackets.FullDebugMode = 1   # every bot decision, skip reason, and level change
+```
+
+Both modes write to the standard server log (`server.loading` channel).
+
+## Troubleshooting
+
+**Bots are not changing levels.**
+
+Ensure `AiPlayerbot.DisableRandomLevels = 0` in your `playerbots.conf`. If this option is enabled, Playerbots overrides the level set by this module and resets bots to a fixed level.
+
+**Server fails to start with a bracket mismatch error.**
+
+If `BotLevelBrackets.Dynamic.SyncFactions = 1`, the Alliance and Horde bracket definitions must be identical (same count, same `Lower`/`Upper` values for each index). Compare both sections in your `.conf` file and correct any differences.
+
+**Brackets do not cover all levels.**
+
+If a bot's current level falls outside every defined bracket, the module automatically flags the bot for reassignment to the closest available bracket. Enable `FullDebugMode` to see these decisions in the log.
+
+## License
+
+Released under the GNU GPL v2 license, consistent with AzerothCore's licensing model.
+
+## Contribution
+
 Created by Dustin Hendrickson.
 
-Pull requests and issues are welcome. Please ensure that contributions adhere to AzerothCore's coding standards.
+Pull requests and issues are welcome. Please ensure that contributions follow AzerothCore's coding standards.
