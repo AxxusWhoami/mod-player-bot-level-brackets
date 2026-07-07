@@ -39,8 +39,36 @@ BotLevelBrackets.CheckFlaggedFrequency = 15
 #    BotLevelBrackets.FlaggedProcessLimit
 #        Description: Maximum number of flagged bots to process per pending level change step.
 #                     0 = unlimited (process all flagged bots each step)
+#                     Values below 3 will trigger a warning at startup.
 #        Default:     5
 BotLevelBrackets.FlaggedProcessLimit = 5
+
+#
+#    BotLevelBrackets.MaxPendingQueueSize
+#        Description: Maximum number of bots that can be in the pending level reset queue at once.
+#                     When the limit is reached, new bots are not enqueued until slots become available.
+#                     0 = unlimited (no cap on the queue size).
+#                     Useful on servers with many bots to prevent unbounded memory growth during
+#                     mass events (e.g., server-wide battleground activity) that keep bots unsafe for long periods.
+#        Default:     0
+BotLevelBrackets.MaxPendingQueueSize = 0
+
+#
+#    BotLevelBrackets.PendingQueueTTL
+#        Description: Maximum time (in seconds) a bot can remain in the pending level reset queue.
+#                     If a bot has not been processed within this time, its entry is dropped from the queue.
+#                     The bot will be re-evaluated and re-enqueued on the next distribution cycle if still needed.
+#                     0 = no TTL (entries remain in the queue indefinitely until processed or the bot logs out).
+#        Default:     0
+BotLevelBrackets.PendingQueueTTL = 0
+
+#
+#    BotLevelBrackets.SocialListRefreshFrequency
+#        Description: The frequency (in seconds) at which the social friend list is refreshed from the database.
+#                     This is now independent of the main distribution check frequency, so updating
+#                     the friend list does not require a full distribution cycle to run first.
+#        Default:     300
+BotLevelBrackets.SocialListRefreshFrequency = 300
 
 #
 #    BotLevelBrackets.IgnoreGuildBotsWithRealPlayers

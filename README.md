@@ -18,12 +18,13 @@ Bots that cannot be safely reset at a given moment (for example, those in combat
 - **Desired percentage distribution** — specify how much of the bot population should occupy each bracket; percentages are auto-balanced to sum to 100.
 - **Dynamic distribution** — optionally let real player activity shift bracket weights so bots naturally follow where players are levelling.
 - **Faction synchronization** — optionally unify bracket definitions and real-player weighting across both factions.
-- **Pending reset queue** — bots that fail safety checks are queued and retried automatically, with a configurable per-cycle process limit.
+- **Pending reset queue** — bots that fail safety checks are queued and retried automatically, with a configurable per-cycle process limit, optional queue size cap, and optional entry TTL.
 - **Death Knight safeguard** — DK bots are never assigned to a bracket whose upper bound is below level 55.
-- **Guild bot exclusion** — bots sharing a guild with any real player are excluded from adjustments; guild membership is tracked persistently in the database so it survives player logouts.
-- **Friend list exclusion** — bots on any real player's friend list are excluded from level adjustments.
+- **Guild bot exclusion** — bots sharing a guild with any real player are excluded from adjustments; guild status is updated in real time on player login and guild join/leave events, and persisted in the database so it survives logouts.
+- **Friend list exclusion** — bots on any real player's friend list are excluded; the list is refreshed on its own independent timer.
 - **Arena team exclusion** — bots that are members of an arena team are excluded from level adjustments.
 - **Name-based exclusion** — specific bots can be excluded by name via a comma-separated configuration list.
+- **Startup configuration validation** — warns on invalid `NumRanges`, overlapping brackets, zero-sum percentages, and low `FlaggedProcessLimit`.
 - **Hot-reload command** — reload the module configuration in-game without restarting the server.
 - **Full and lite debug modes** — detailed server log output for monitoring and troubleshooting.
 
@@ -114,13 +115,16 @@ All settings live in `mod_player_bot_level_brackets.conf`.
 | `BotLevelBrackets.LiteDebugMode` | Enables summary-level debug logging (distribution totals and bracket counts). | `0` | `0` / `1` |
 | `BotLevelBrackets.CheckFrequency` | Seconds between full distribution checks. | `300` | Positive integer |
 | `BotLevelBrackets.CheckFlaggedFrequency` | Seconds between attempts to process queued (pending) level resets. | `15` | Positive integer |
-| `BotLevelBrackets.FlaggedProcessLimit` | Maximum bots processed from the pending queue per cycle. `0` = unlimited. | `5` | Non-negative integer |
-| `BotLevelBrackets.IgnoreGuildBotsWithRealPlayers` | Exclude bots in guilds that have real players (online or offline via DB tracker). | `1` | `0` / `1` |
-| `BotLevelBrackets.GuildTrackerUpdateFrequency` | Seconds between persistent guild tracker database updates. | `600` | Positive integer |
+| `BotLevelBrackets.FlaggedProcessLimit` | Maximum bots processed from the pending queue per cycle. `0` = unlimited. Values below 3 produce a startup warning. | `5` | Non-negative integer |
+| `BotLevelBrackets.MaxPendingQueueSize` | Maximum number of bots that can be in the pending reset queue at once. `0` = unlimited. Prevents unbounded growth during mass events. | `0` | Non-negative integer |
+| `BotLevelBrackets.PendingQueueTTL` | Maximum seconds a bot can remain in the pending queue before its entry is dropped. `0` = no TTL. The bot will be re-evaluated on the next distribution cycle. | `0` | Non-negative integer |
+| `BotLevelBrackets.IgnoreGuildBotsWithRealPlayers` | Exclude bots in guilds that have real players (online or offline via DB tracker). Guild status is now also updated in real time via login and guild-join/leave events. | `1` | `0` / `1` |
+| `BotLevelBrackets.GuildTrackerUpdateFrequency` | Seconds between periodic guild tracker database updates. | `600` | Positive integer |
 | `BotLevelBrackets.IgnoreArenaTeamBots` | Exclude bots that are members of any arena team from level adjustments. | `1` | `0` / `1` |
 | `BotLevelBrackets.IgnoreFriendListed` | Exclude bots that appear on any real player's friend list. | `1` | `0` / `1` |
+| `BotLevelBrackets.SocialListRefreshFrequency` | Seconds between friend list database refreshes. Independent of the main distribution timer. | `300` | Positive integer |
 | `BotLevelBrackets.ExcludeNames` | Comma-separated list of bot names to always exclude from bracket processing (case-insensitive). | `` | String |
-| `BotLevelBrackets.NumRanges` | Total number of level brackets. Must match the number of `RangeX` entries defined below. | `9` | Positive integer |
+| `BotLevelBrackets.NumRanges` | Total number of level brackets. Must match the number of `RangeX` entries defined below. Values above 20 produce a startup warning. `0` is invalid and defaults to `1`. | `9` | Positive integer |
 
 > **Important:** If you increase `NumRanges` beyond the default of 9, you must add the corresponding `RangeX.Lower`, `RangeX.Upper`, and `RangeX.Pct` lines for both Alliance and Horde sections in your `.conf` file.
 
@@ -246,6 +250,14 @@ If `BotLevelBrackets.Dynamic.SyncFactions = 1`, the Alliance and Horde bracket d
 **Brackets do not cover all levels.**
 
 If a bot's current level falls outside every defined bracket, the module automatically flags the bot for reassignment to the closest available bracket. Enable `FullDebugMode` to see these decisions in the log.
+
+**The pending queue grows without bound.**
+
+Set `BotLevelBrackets.MaxPendingQueueSize` to a reasonable cap (e.g., twice your bot count) and/or set `BotLevelBrackets.PendingQueueTTL` to a value in seconds after which stale entries are discarded. Also ensure `BotLevelBrackets.FlaggedProcessLimit` is high enough (>= 3) to drain the queue faster than it fills.
+
+**Guild tracker is protecting bots in a guild that no longer has real players.**
+
+Run the guild cleanup command (if available) or wait for the `GuildTrackerUpdateFrequency` timer to update the tracker. The module now also removes a guild from the online cache immediately when the last real player leaves via the `OnRemoveMember` guild event hook.
 
 ## License
 
