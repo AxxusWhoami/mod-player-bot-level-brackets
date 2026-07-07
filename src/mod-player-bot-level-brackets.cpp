@@ -269,8 +269,8 @@ public:
             }
         }
 
-        handler->PSendSysMessage("[BotBrackets] Status — Alliance: %u bots, Horde: %u bots", totalAlliance, totalHorde);
-        handler->PSendSysMessage("%-4s %-10s %-8s %-8s %-8s %-8s",
+        handler->PSendSysMessage("[BotBrackets] Status — Alliance: {} bots, Horde: {} bots", totalAlliance, totalHorde);
+        handler->PSendSysMessage("{:<4} {:<10} {:<8} {:<8} {:<8} {:<8}",
                                  "Idx", "Range", "A.Des", "A.Act", "H.Des", "H.Act");
 
         for (int i = 0; i < g_NumRanges; ++i)
@@ -282,7 +282,7 @@ public:
                 ? static_cast<int>(round((g_HordeLevelRanges[i].desiredPercent / 100.0) * totalHorde))
                 : 0;
 
-            handler->PSendSysMessage("%-4d %3u-%-6u %-8d %-8d %-8d %-8d",
+            handler->PSendSysMessage("{:<4} {:>3}-{:<6} {:<8} {:<8} {:<8} {:<8}",
                                      i + 1,
                                      g_AllianceLevelRanges[i].lower,
                                      g_AllianceLevelRanges[i].upper,
@@ -292,7 +292,7 @@ public:
                                      hordeCounts[i]);
         }
 
-        handler->PSendSysMessage("[BotBrackets] Pending queue: %zu entries.", g_PendingLevelResets.size());
+        handler->PSendSysMessage("[BotBrackets] Pending queue: {} entries.", g_PendingLevelResets.size());
         return true;
     }
 
@@ -312,15 +312,15 @@ public:
     static bool HandlePending(ChatHandler* handler)
     {
         size_t queueSize = g_PendingLevelResets.size();
-        handler->PSendSysMessage("[BotBrackets] Pending queue: %zu entries.", queueSize);
+        handler->PSendSysMessage("[BotBrackets] Pending queue: {} entries.", queueSize);
 
         if (g_MaxPendingQueueSize > 0)
-            handler->PSendSysMessage("[BotBrackets] Queue cap: %u.", g_MaxPendingQueueSize);
+            handler->PSendSysMessage("[BotBrackets] Queue cap: {}.", g_MaxPendingQueueSize);
         else
             handler->SendSysMessage("[BotBrackets] Queue cap: unlimited.");
 
         if (g_PendingQueueTTL > 0)
-            handler->PSendSysMessage("[BotBrackets] TTL: %us per entry.", g_PendingQueueTTL);
+            handler->PSendSysMessage("[BotBrackets] TTL: {}s per entry.", g_PendingQueueTTL);
         else
             handler->SendSysMessage("[BotBrackets] TTL: disabled.");
 
@@ -339,7 +339,7 @@ public:
         }
 
         uint32 now = static_cast<uint32>(time(nullptr));
-        handler->PSendSysMessage("[BotBrackets] Oldest entry: %us ago. Newest: %us ago.",
+        handler->PSendSysMessage("[BotBrackets] Oldest entry: {}s ago. Newest: {}s ago.",
                                  now - oldest, now - newest);
         return true;
     }
@@ -356,7 +356,7 @@ public:
         CleanupGuildTracker();
         size_t after = g_PersistentRealPlayerGuildIds.size();
 
-        handler->PSendSysMessage("[BotBrackets] Guild cleanup complete. Removed %zu guild(s). %zu guild(s) remain tracked.",
+        handler->PSendSysMessage("[BotBrackets] Guild cleanup complete. Removed {} guild(s). {} guild(s) remain tracked.",
                                  before - after, after);
         return true;
     }

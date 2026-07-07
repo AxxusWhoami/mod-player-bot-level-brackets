@@ -423,7 +423,7 @@ void RunDistributionCycle(ChatHandler* handler)
 
     if (handler)
     {
-        handler->PSendSysMessage("[BotBrackets] Alliance: %u bots  Horde: %u bots  Pending: %zu",
+        handler->PSendSysMessage("[BotBrackets] Alliance: {} bots  Horde: {} bots  Pending: {}",
                                  totalAllianceBots, totalHordeBots, g_PendingLevelResets.size());
     }
 }
