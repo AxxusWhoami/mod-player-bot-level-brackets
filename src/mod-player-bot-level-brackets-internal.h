@@ -96,7 +96,7 @@ void ClampAndBalanceBrackets();
 void LoadBotLevelBracketsConfig();
 
 // --- helpers ---
-bool IsPlayerBot(Player* player);
+bool IsBracketPlayerBot(Player* player);
 bool IsPlayerRandomBot(Player* player);
 bool IsAlliancePlayerBot(Player* bot);
 bool IsHordePlayerBot(Player* bot);

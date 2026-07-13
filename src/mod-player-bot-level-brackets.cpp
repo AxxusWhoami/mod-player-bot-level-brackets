@@ -110,7 +110,7 @@ public:
     {
         if (!g_BotLevelBracketsEnabled || !g_IgnoreGuildBotsWithRealPlayers)
             return;
-        if (IsPlayerBot(player))
+        if (IsBracketPlayerBot(player))
             return;
 
         uint32 guildId = player->GetGuildId();
@@ -143,7 +143,7 @@ public:
     {
         if (!g_BotLevelBracketsEnabled || !g_IgnoreGuildBotsWithRealPlayers)
             return;
-        if (!player || IsPlayerBot(player))
+        if (!player || IsBracketPlayerBot(player))
             return;
 
         uint32 guildId = guild->GetId();
@@ -163,7 +163,7 @@ public:
     {
         if (!g_BotLevelBracketsEnabled || !g_IgnoreGuildBotsWithRealPlayers)
             return;
-        if (!player || IsPlayerBot(player))
+        if (!player || IsBracketPlayerBot(player))
             return;
 
         uint32 guildId = guild->GetId();
@@ -175,7 +175,7 @@ public:
             Player* p = itr.second;
             if (!p || !p->IsInWorld() || p == player)
                 continue;
-            if (!IsPlayerBot(p) && p->GetGuildId() == guildId)
+            if (!IsBracketPlayerBot(p) && p->GetGuildId() == guildId)
             {
                 otherRealPlayerOnline = true;
                 break;
@@ -245,7 +245,7 @@ public:
             Player* player = itr.second;
             if (!player || !player->IsInWorld())
                 continue;
-            if (!IsPlayerBot(player) || !IsPlayerRandomBot(player))
+            if (!IsBracketPlayerBot(player) || !IsPlayerRandomBot(player))
                 continue;
             if (IsBotExcluded(player))
                 continue;

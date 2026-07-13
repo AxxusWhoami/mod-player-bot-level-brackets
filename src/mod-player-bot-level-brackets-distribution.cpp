@@ -106,7 +106,7 @@ void AdjustBotToRange(Player* bot, int targetRangeIndex, const LevelRangeConfig*
 
 int GetOrFlagPlayerBracket(Player* player)
 {
-    bool isBot = IsPlayerBot(player);
+    bool isBot = IsBracketPlayerBot(player);
 
     if (isBot && IsBotExcluded(player))
         return -1;
@@ -124,7 +124,7 @@ int GetOrFlagPlayerBracket(Player* player)
             for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
             {
                 Player* member = ref->GetSource();
-                if (member && member->IsInWorld() && !IsPlayerBot(member))
+                if (member && member->IsInWorld() && !IsBracketPlayerBot(member))
                 {
                     if (g_BotDistFullDebugMode)
                         LOG_INFO("server.loading",
@@ -191,7 +191,7 @@ static void ApplyDynamicWeights(
     for (auto const& itr : allPlayers)
     {
         Player* player = itr.second;
-        if (!player || !player->IsInWorld() || IsPlayerBot(player))
+        if (!player || !player->IsInWorld() || IsBracketPlayerBot(player))
             continue;
         int rangeIndex = GetLevelRangeIndex(player->GetLevel(), player->GetTeamId());
         if (rangeIndex < 0)
@@ -360,7 +360,7 @@ void RunDistributionCycle(ChatHandler* handler)
         Player* player = itr.second;
         if (!player || !player->IsInWorld())
             continue;
-        if (!IsPlayerBot(player) || !IsPlayerRandomBot(player))
+        if (!IsBracketPlayerBot(player) || !IsPlayerRandomBot(player))
             continue;
         if (IsBotExcluded(player))
             continue;

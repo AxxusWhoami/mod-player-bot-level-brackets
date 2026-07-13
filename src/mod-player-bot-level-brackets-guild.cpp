@@ -9,7 +9,7 @@ static std::unordered_set<uint32> CollectCurrentRealPlayerGuildIds()
         Player* player = itr.second;
         if (!player || !player->IsInWorld())
             continue;
-        if (!IsPlayerBot(player))
+        if (!IsBracketPlayerBot(player))
         {
             uint32 guildId = player->GetGuildId();
             if (guildId != 0)
@@ -49,7 +49,7 @@ void LoadRealPlayerGuildIds(const std::unordered_map<ObjectGuid, Player*>& playe
         Player* player = itr.second;
         if (!player || !player->IsInWorld())
             continue;
-        if (!IsPlayerBot(player))
+        if (!IsBracketPlayerBot(player))
         {
             uint32 guildId = player->GetGuildId();
             if (guildId != 0)

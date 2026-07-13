@@ -6,7 +6,7 @@ static inline bool IsBotInvalidOrLeaving(Player* bot)
         || bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld();
 }
 
-bool IsPlayerBot(Player* player)
+bool IsBracketPlayerBot(Player* player)
 {
     if (!player)
         return false;
@@ -105,7 +105,7 @@ bool IsBotSafeForLevelReset(Player* bot)
         for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
         {
             Player* member = ref->GetSource();
-            if (member && member->IsInWorld() && !IsPlayerBot(member))
+            if (member && member->IsInWorld() && !IsBracketPlayerBot(member))
             {
                 if (g_BotDistFullDebugMode)
                     LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} has non-bot group member {}.", bot->GetName(), member->GetName());
