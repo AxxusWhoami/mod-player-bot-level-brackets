@@ -62,6 +62,7 @@ void LoadBotLevelBracketsConfig()
     g_UseDynamicDistribution            = sConfigMgr->GetOption<bool>("BotLevelBrackets.Dynamic.UseDynamicDistribution", false);
     g_RealPlayerWeight                  = sConfigMgr->GetOption<float>("BotLevelBrackets.Dynamic.RealPlayerWeight", 1.0f);
     g_SyncFactions                      = sConfigMgr->GetOption<bool>("BotLevelBrackets.Dynamic.SyncFactions", false);
+    g_TeleportOnLevelChange             = sConfigMgr->GetOption<bool>("BotLevelBrackets.TeleportOnLevelChange", true);
     g_IgnoreFriendListed                = sConfigMgr->GetOption<bool>("BotLevelBrackets.IgnoreFriendListed", true);
     g_FlaggedProcessLimit               = sConfigMgr->GetOption<uint32>("BotLevelBrackets.FlaggedProcessLimit", 5);
     g_MaxPendingQueueSize               = sConfigMgr->GetOption<uint32>("BotLevelBrackets.MaxPendingQueueSize", 0);

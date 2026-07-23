@@ -25,6 +25,7 @@ uint32 g_PendingQueueTTL             = 0;
 
 float  g_RealPlayerWeight            = 1.0f;
 bool   g_SyncFactions                = false;
+bool   g_TeleportOnLevelChange       = true;
 
 std::unordered_set<uint64>                        g_SocialFriendsList;
 std::unordered_set<std::string>                   g_ExcludeBotNames;

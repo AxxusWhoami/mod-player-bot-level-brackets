@@ -80,6 +80,7 @@ extern uint32 g_PendingQueueTTL;
 
 extern float  g_RealPlayerWeight;
 extern bool   g_SyncFactions;
+extern bool   g_TeleportOnLevelChange;
 
 extern std::unordered_set<uint64>                            g_SocialFriendsList;
 extern std::unordered_set<std::string>                       g_ExcludeBotNames;
@@ -123,6 +124,9 @@ int   GetLevelRangeIndex(uint8 level, uint8 teamID);
 uint8 GetRandomLevelInRange(const LevelRangeConfig& range);
 void  AdjustBotToRange(Player* bot, int targetRangeIndex, const LevelRangeConfig* factionRanges);
 int   GetOrFlagPlayerBracket(Player* player);
+
+// --- teleport ---
+void  TeleportBotToLevelZone(Player* bot, uint8 newLevel, uint8 teamID);
 
 /// Full distribution cycle. Pass a non-null ChatHandler to receive a summary reply.
 void RunDistributionCycle(ChatHandler* handler);

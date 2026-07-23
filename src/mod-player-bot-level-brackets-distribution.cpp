@@ -101,6 +101,8 @@ void AdjustBotToRange(Player* bot, int targetRangeIndex, const LevelRangeConfig*
     }
 
     ChatHandler(bot->GetSession()).SendSysMessage("[mod-bot-level-brackets] Your level has been reset.");
+
+    TeleportBotToLevelZone(bot, newLevel, bot->GetTeamId());
 }
 
 
