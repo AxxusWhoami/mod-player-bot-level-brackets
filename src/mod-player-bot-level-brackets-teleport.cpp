@@ -168,6 +168,114 @@ static const HubArea s_HubAreas[] =
 
 static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0]);
 
+// Starting zones where bots should never linger — disperse ALL bots found here.
+// These are the level 1-10 spawn areas for each race.
+static const HubArea s_StartingAreas[] =
+{
+    // Elwynn Forest (Human start - Northshire Valley)
+    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE },
+    // Dun Morogh (Dwarf/Gnome start - Coldridge Valley)
+    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE },
+    // Teldrassil (Night Elf start - Shadowglen)
+    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE },
+    // Durotar (Orc/Troll start - Valley of Trials)
+    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE },
+    // Mulgore (Tauren start - Red Cloud Mesa)
+    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE },
+    // Tirisfal Glades (Undead start - Deathknell)
+    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE },
+    // Eversong Woods (Blood Elf start - Sunstrider Isle)
+    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE },
+    // Azuremyst Isle (Draenei start - Ammen Vale)
+    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE },
+};
+
+static constexpr size_t s_NumStartingAreas = sizeof(s_StartingAreas) / sizeof(s_StartingAreas[0]);
+
+// Maps where bots of certain level brackets should NOT be.
+// If a bot is on one of these maps but its level doesn't match, disperse it.
+struct WrongMapRule
+{
+    uint32 mapId;
+    uint8  minLevel;  // inclusive
+    uint8  maxLevel;  // inclusive
+};
+
+static const WrongMapRule s_WrongMapRules[] =
+{
+    // Eastern Kingdoms (map 0) — appropriate for levels 1-60 (classic content)
+    { 0,   1, 60 },
+    // Kalimdor (map 1) — appropriate for levels 1-60 (classic content)
+    { 1,   1, 60 },
+    // Outland (map 530) — appropriate for levels 58-70
+    { 530, 58, 70 },
+    // Northrend (map 571) — appropriate for levels 68-80
+    { 571, 68, 80 },
+};
+
+static constexpr size_t s_NumWrongMapRules = sizeof(s_WrongMapRules) / sizeof(s_WrongMapRules[0]);
+
+
+static bool IsBotDispersable(Player* bot)
+{
+    if (!bot || !bot->IsInWorld())
+        return false;
+    if (!IsBracketPlayerBot(bot) || !IsPlayerRandomBot(bot))
+        return false;
+    if (IsBotExcluded(bot))
+        return false;
+    if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot))
+        return false;
+    if (g_IgnoreFriendListed && BotInFriendList(bot))
+        return false;
+    if (g_IgnoreArenaTeamBots && BotInArenaTeam(bot))
+        return false;
+    if (bot->IsBeingTeleported() || bot->IsDuringRemoveFromWorld())
+        return false;
+    if (!bot->GetSession() || bot->GetSession()->isLogingOut())
+        return false;
+    if (g_PendingTeleports.count(bot->GetGUID()) > 0)
+        return false;
+    if (bot->InBattleground() || bot->InArena() || bot->InBattlegroundQueue())
+        return false;
+    return true;
+}
+
+
+static bool IsInArea(const Player* bot, const HubArea& area)
+{
+    if (bot->GetMapId() != area.mapId)
+        return false;
+    if (bot->GetTeamId() != area.teamID)
+        return false;
+
+    float dx = bot->GetPositionX() - area.cx;
+    float dy = bot->GetPositionY() - area.cy;
+    float dz = bot->GetPositionZ() - area.cz;
+    float distSq = dx * dx + dy * dy + dz * dz;
+
+    return distSq <= area.radius * area.radius;
+}
+
+
+static bool IsOnWrongMapForLevel(Player* bot)
+{
+    uint32 mapId = bot->GetMapId();
+    uint8  level = bot->GetLevel();
+
+    for (size_t i = 0; i < s_NumWrongMapRules; ++i)
+    {
+        const WrongMapRule& rule = s_WrongMapRules[i];
+        if (mapId == rule.mapId)
+        {
+            if (level < rule.minLevel || level > rule.maxLevel)
+                return true;
+        }
+    }
+
+    return false;
+}
+
 
 void ProcessHubDisperse()
 {
@@ -175,8 +283,58 @@ void ProcessHubDisperse()
         return;
 
     uint32 dispersed = 0;
-    uint32 now = static_cast<uint32>(time(nullptr));
 
+    // Gather all dispersable bots once.
+    std::vector<Player*> allBots;
+    allBots.reserve(100);
+
+    const auto& players = ObjectAccessor::GetPlayers();
+    for (const auto& itr : players)
+    {
+        Player* bot = itr.second;
+        if (!IsBotDispersable(bot))
+            continue;
+        allBots.push_back(bot);
+    }
+
+    if (allBots.empty())
+        return;
+
+    // Track which bots we've already dispersed to avoid double-enqueue.
+    std::set<ObjectGuid> alreadyDispersed;
+
+    // Phase 1: Disperse ALL bots found in starting zones.
+    for (Player* bot : allBots)
+    {
+        if (dispersed >= g_HubDisperseBotsPerCycle)
+            break;
+        if (alreadyDispersed.count(bot->GetGUID()) > 0)
+            continue;
+
+        for (size_t i = 0; i < s_NumStartingAreas; ++i)
+        {
+            if (IsInArea(bot, s_StartingAreas[i]))
+            {
+                uint8 level = bot->GetLevel();
+                uint8 teamID = bot->GetTeamId();
+                int rangeIndex = GetLevelRangeIndex(level, teamID);
+                if (rangeIndex >= 0)
+                {
+                    EnqueuePendingTeleport(bot, level, teamID);
+                    alreadyDispersed.insert(bot->GetGUID());
+                    ++dispersed;
+
+                    if (g_BotDistFullDebugMode)
+                        LOG_INFO("server.loading",
+                                 "[BotLevelBrackets] HubDisperse: bot '{}' (level {}) dispersed from starting area {} to leveling zone.",
+                                 bot->GetName(), level, i);
+                }
+                break;
+            }
+        }
+    }
+
+    // Phase 2: Disperse excess bots from capital city hubs (keep quota as ambiance).
     for (size_t hubIdx = 0; hubIdx < s_NumHubAreas && dispersed < g_HubDisperseBotsPerCycle; ++hubIdx)
     {
         const HubArea& hub = s_HubAreas[hubIdx];
@@ -184,40 +342,11 @@ void ProcessHubDisperse()
         std::vector<Player*> botsInHub;
         botsInHub.reserve(20);
 
-        const auto& allPlayers = ObjectAccessor::GetPlayers();
-        for (const auto& itr : allPlayers)
+        for (Player* bot : allBots)
         {
-            Player* bot = itr.second;
-            if (!bot || !bot->IsInWorld())
+            if (alreadyDispersed.count(bot->GetGUID()) > 0)
                 continue;
-            if (!IsBracketPlayerBot(bot) || !IsPlayerRandomBot(bot))
-                continue;
-            if (IsBotExcluded(bot))
-                continue;
-            if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot))
-                continue;
-            if (g_IgnoreFriendListed && BotInFriendList(bot))
-                continue;
-            if (g_IgnoreArenaTeamBots && BotInArenaTeam(bot))
-                continue;
-            if (bot->GetTeamId() != hub.teamID)
-                continue;
-            if (bot->IsBeingTeleported() || bot->IsDuringRemoveFromWorld())
-                continue;
-            if (!bot->GetSession() || bot->GetSession()->isLogingOut())
-                continue;
-            if (g_PendingTeleports.count(bot->GetGUID()) > 0)
-                continue;
-
-            if (bot->GetMapId() != hub.mapId)
-                continue;
-
-            float dx = bot->GetPositionX() - hub.cx;
-            float dy = bot->GetPositionY() - hub.cy;
-            float dz = bot->GetPositionZ() - hub.cz;
-            float distSq = dx * dx + dy * dy + dz * dz;
-
-            if (distSq <= hub.radius * hub.radius)
+            if (IsInArea(bot, hub))
                 botsInHub.push_back(bot);
         }
 
@@ -241,6 +370,7 @@ void ProcessHubDisperse()
                 continue;
 
             EnqueuePendingTeleport(bot, level, teamID);
+            alreadyDispersed.insert(bot->GetGUID());
             ++dispersed;
 
             if (g_BotDistFullDebugMode)
@@ -248,6 +378,33 @@ void ProcessHubDisperse()
                          "[BotLevelBrackets] HubDisperse: bot '{}' (level {}) dispersed from hub {} to leveling zone.",
                          bot->GetName(), level, hubIdx);
         }
+    }
+
+    // Phase 3: Disperse any bot on the wrong map for its level bracket.
+    for (Player* bot : allBots)
+    {
+        if (dispersed >= g_HubDisperseBotsPerCycle)
+            break;
+        if (alreadyDispersed.count(bot->GetGUID()) > 0)
+            continue;
+
+        if (!IsOnWrongMapForLevel(bot))
+            continue;
+
+        uint8 level = bot->GetLevel();
+        uint8 teamID = bot->GetTeamId();
+        int rangeIndex = GetLevelRangeIndex(level, teamID);
+        if (rangeIndex < 0)
+            continue;
+
+        EnqueuePendingTeleport(bot, level, teamID);
+        alreadyDispersed.insert(bot->GetGUID());
+        ++dispersed;
+
+        if (g_BotDistFullDebugMode)
+            LOG_INFO("server.loading",
+                     "[BotLevelBrackets] HubDisperse: bot '{}' (level {}) on wrong map {} dispersed to leveling zone.",
+                     bot->GetName(), level, bot->GetMapId());
     }
 
     if (dispersed > 0 && g_BotDistFullDebugMode)
