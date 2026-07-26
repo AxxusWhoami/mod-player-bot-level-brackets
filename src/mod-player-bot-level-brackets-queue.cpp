@@ -5,11 +5,6 @@ void RemoveBotFromPendingResets(Player* bot)
     g_PendingLevelResets.erase(bot->GetGUID());
 }
 
-void RemoveBotFromPendingTeleports(Player* bot)
-{
-    g_PendingTeleports.erase(bot->GetGUID());
-}
-
 
 void EnqueuePendingReset(ObjectGuid guid, int targetRange, const LevelRangeConfig* factionRanges)
 {
