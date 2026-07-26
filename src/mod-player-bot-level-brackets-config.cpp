@@ -68,6 +68,11 @@ void LoadBotLevelBracketsConfig()
     g_MaxPendingQueueSize               = sConfigMgr->GetOption<uint32>("BotLevelBrackets.MaxPendingQueueSize", 0);
     g_PendingQueueTTL                   = sConfigMgr->GetOption<uint32>("BotLevelBrackets.PendingQueueTTL", 0);
 
+    g_HubDisperseEnabled                = sConfigMgr->GetOption<bool>("BotLevelBrackets.HubDisperse.Enabled", true);
+    g_HubDisperseFrequency              = sConfigMgr->GetOption<uint32>("BotLevelBrackets.HubDisperse.Frequency", 30);
+    g_HubDisperseBotsPerCycle           = sConfigMgr->GetOption<uint32>("BotLevelBrackets.HubDisperse.BotsPerCycle", 10);
+    g_HubDisperseMaxBotsPerHub          = sConfigMgr->GetOption<uint32>("BotLevelBrackets.HubDisperse.MaxBotsPerHub", 5);
+
     std::string excludeNames = sConfigMgr->GetOption<std::string>("BotLevelBrackets.ExcludeNames", "");
     g_ExcludeBotNames.clear();
     std::istringstream f(excludeNames);

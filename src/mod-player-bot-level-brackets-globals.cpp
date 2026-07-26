@@ -27,6 +27,11 @@ float  g_RealPlayerWeight            = 1.0f;
 bool   g_SyncFactions                = false;
 bool   g_TeleportOnLevelChange       = true;
 
+bool   g_HubDisperseEnabled          = true;
+uint32 g_HubDisperseFrequency        = 30;
+uint32 g_HubDisperseBotsPerCycle     = 10;
+uint32 g_HubDisperseMaxBotsPerHub    = 5;
+
 std::unordered_set<uint64>                        g_SocialFriendsList;
 std::unordered_set<std::string>                   g_ExcludeBotNames;
 std::unordered_set<uint32>                        g_RealPlayerGuildIds;

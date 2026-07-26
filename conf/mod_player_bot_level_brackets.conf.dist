@@ -166,6 +166,36 @@ BotLevelBrackets.Dynamic.SyncFactions = 0
 #                     Valid values: 0 (off) / 1 (on)
 BotLevelBrackets.TeleportOnLevelChange = 1
 
+#
+#    BotLevelBrackets.HubDisperse.Enabled
+#        Description: When enabled, bots that congregate in capital cities and hubs
+#                     (Stormwind, Orgrimmar, Dalaran, etc.) are periodically dispersed
+#                     to their correct leveling zones. This keeps hubs from filling
+#                     with bots of mismatched levels.
+#        Default:     1 (enabled)
+#                     Valid values: 0 (off) / 1 (on)
+BotLevelBrackets.HubDisperse.Enabled = 1
+
+#
+#    BotLevelBrackets.HubDisperse.Frequency
+#        Description: How often (in seconds) the hub dispersal check runs.
+#        Default:     30
+BotLevelBrackets.HubDisperse.Frequency = 30
+
+#
+#    BotLevelBrackets.HubDisperse.BotsPerCycle
+#        Description: Maximum number of bots to disperse per cycle across all hubs.
+#                     Lower values spread the teleport load over time.
+#        Default:     10
+BotLevelBrackets.HubDisperse.BotsPerCycle = 10
+
+#
+#    BotLevelBrackets.HubDisperse.MaxBotsPerHub
+#        Description: How many bots are allowed to remain in each hub as ambient population.
+#                     Bots beyond this number are teleported to their leveling zone.
+#        Default:     5
+BotLevelBrackets.HubDisperse.MaxBotsPerHub = 5
+
 ##############################################
 # Alliance Level Brackets Configuration
 ##############################################

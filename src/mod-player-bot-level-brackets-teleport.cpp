@@ -132,3 +132,124 @@ void RemoveBotFromPendingTeleports(Player* bot)
     if (bot)
         g_PendingTeleports.erase(bot->GetGUID());
 }
+
+
+// =============================================================================
+// HUB DISPERSE
+// =============================================================================
+// Capital cities and hubs where bots congregate. We want to keep a small
+// ambiance quota in each and disperse the rest to their leveling zones.
+struct HubArea
+{
+    uint32 mapId;
+    float  cx, cy, cz;
+    float  radius;
+    uint8  teamID;     // TEAM_ALLIANCE or TEAM_HORDE (or both)
+};
+
+static const HubArea s_HubAreas[] =
+{
+    // Stormwind City (Alliance)
+    { 0,  -8810.0f,  640.0f,  94.0f, 200.0f, TEAM_ALLIANCE },
+    // Orgrimmar (Horde)
+    { 1,  1570.0f,  -4400.0f, 8.0f, 200.0f, TEAM_HORDE },
+    // Dalaran (Northrend, both factions)
+    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_ALLIANCE },
+    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_HORDE },
+    // Ironforge (Alliance)
+    { 0,  -4980.0f, -940.0f,  501.0f, 150.0f, TEAM_ALLIANCE },
+    // Undercity (Horde)
+    { 0,  1620.0f,  240.0f,  60.0f, 150.0f, TEAM_HORDE },
+    // Darnassus (Alliance)
+    { 1,  9950.0f,  2330.0f, 1330.0f, 150.0f, TEAM_ALLIANCE },
+    // Thunder Bluff (Horde)
+    { 1,  -1290.0f, 150.0f,  130.0f, 150.0f, TEAM_HORDE },
+};
+
+static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0]);
+
+
+void ProcessHubDisperse()
+{
+    if (!g_HubDisperseEnabled || !g_TeleportOnLevelChange)
+        return;
+
+    uint32 dispersed = 0;
+    uint32 now = static_cast<uint32>(time(nullptr));
+
+    for (size_t hubIdx = 0; hubIdx < s_NumHubAreas && dispersed < g_HubDisperseBotsPerCycle; ++hubIdx)
+    {
+        const HubArea& hub = s_HubAreas[hubIdx];
+
+        std::vector<Player*> botsInHub;
+        botsInHub.reserve(20);
+
+        const auto& allPlayers = ObjectAccessor::GetPlayers();
+        for (const auto& itr : allPlayers)
+        {
+            Player* bot = itr.second;
+            if (!bot || !bot->IsInWorld())
+                continue;
+            if (!IsBracketPlayerBot(bot) || !IsPlayerRandomBot(bot))
+                continue;
+            if (IsBotExcluded(bot))
+                continue;
+            if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot))
+                continue;
+            if (g_IgnoreFriendListed && BotInFriendList(bot))
+                continue;
+            if (g_IgnoreArenaTeamBots && BotInArenaTeam(bot))
+                continue;
+            if (bot->GetTeamId() != hub.teamID)
+                continue;
+            if (bot->IsBeingTeleported() || bot->IsDuringRemoveFromWorld())
+                continue;
+            if (!bot->GetSession() || bot->GetSession()->isLogingOut())
+                continue;
+            if (g_PendingTeleports.count(bot->GetGUID()) > 0)
+                continue;
+
+            if (bot->GetMapId() != hub.mapId)
+                continue;
+
+            float dx = bot->GetPositionX() - hub.cx;
+            float dy = bot->GetPositionY() - hub.cy;
+            float dz = bot->GetPositionZ() - hub.cz;
+            float distSq = dx * dx + dy * dy + dz * dz;
+
+            if (distSq <= hub.radius * hub.radius)
+                botsInHub.push_back(bot);
+        }
+
+        if (botsInHub.empty())
+            continue;
+
+        uint32 quota = g_HubDisperseMaxBotsPerHub;
+        if (botsInHub.size() <= quota)
+            continue;
+
+        uint32 toDisperse = static_cast<uint32>(botsInHub.size()) - quota;
+
+        for (uint32 i = 0; i < toDisperse && dispersed < g_HubDisperseBotsPerCycle; ++i)
+        {
+            Player* bot = botsInHub[i];
+            uint8 level = bot->GetLevel();
+            uint8 teamID = bot->GetTeamId();
+
+            int rangeIndex = GetLevelRangeIndex(level, teamID);
+            if (rangeIndex < 0)
+                continue;
+
+            EnqueuePendingTeleport(bot, level, teamID);
+            ++dispersed;
+
+            if (g_BotDistFullDebugMode)
+                LOG_INFO("server.loading",
+                         "[BotLevelBrackets] HubDisperse: bot '{}' (level {}) dispersed from hub {} to leveling zone.",
+                         bot->GetName(), level, hubIdx);
+        }
+    }
+
+    if (dispersed > 0 && g_BotDistFullDebugMode)
+        LOG_INFO("server.loading", "[BotLevelBrackets] HubDisperse: dispersed {} bots this cycle.", dispersed);
+}

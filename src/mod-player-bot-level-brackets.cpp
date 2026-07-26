@@ -10,7 +10,7 @@ class BotLevelBracketsWorldScript : public WorldScript
 public:
     BotLevelBracketsWorldScript()
         : WorldScript("BotLevelBracketsWorldScript"),
-          m_timer(0), m_flaggedTimer(0), m_guildTrackerTimer(0), m_socialListTimer(0), m_teleportTimer(0)
+          m_timer(0), m_flaggedTimer(0), m_guildTrackerTimer(0), m_socialListTimer(0), m_teleportTimer(0), m_hubDisperseTimer(0)
     { }
 
     void OnStartup() override
@@ -56,6 +56,7 @@ public:
         m_guildTrackerTimer += diff;
         m_socialListTimer   += diff;
         m_teleportTimer     += diff;
+        m_hubDisperseTimer  += diff;
 
         if (m_flaggedTimer >= g_BotDistFlaggedCheckFrequency * 1000)
         {
@@ -69,6 +70,12 @@ public:
         {
             ProcessPendingTeleports();
             m_teleportTimer = 0;
+        }
+
+        if (m_hubDisperseTimer >= g_HubDisperseFrequency * 1000)
+        {
+            ProcessHubDisperse();
+            m_hubDisperseTimer = 0;
         }
 
         if (m_guildTrackerTimer >= g_GuildTrackerUpdateFrequency * 1000)
@@ -98,6 +105,7 @@ private:
     uint32 m_guildTrackerTimer;
     uint32 m_socialListTimer;
     uint32 m_teleportTimer;
+    uint32 m_hubDisperseTimer;
 };
 
 

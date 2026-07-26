@@ -91,6 +91,11 @@ extern float  g_RealPlayerWeight;
 extern bool   g_SyncFactions;
 extern bool   g_TeleportOnLevelChange;
 
+extern bool   g_HubDisperseEnabled;
+extern uint32 g_HubDisperseFrequency;
+extern uint32 g_HubDisperseBotsPerCycle;
+extern uint32 g_HubDisperseMaxBotsPerHub;
+
 extern std::unordered_set<uint64>                            g_SocialFriendsList;
 extern std::unordered_set<std::string>                       g_ExcludeBotNames;
 extern std::unordered_set<uint32>                            g_RealPlayerGuildIds;
@@ -140,6 +145,7 @@ void  TeleportBotToLevelZone(Player* bot, uint8 newLevel, uint8 teamID);
 void  EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID);
 void  ProcessPendingTeleports();
 void  RemoveBotFromPendingTeleports(Player* bot);
+void  ProcessHubDisperse();
 
 /// Full distribution cycle. Pass a non-null ChatHandler to receive a summary reply.
 void RunDistributionCycle(ChatHandler* handler);
