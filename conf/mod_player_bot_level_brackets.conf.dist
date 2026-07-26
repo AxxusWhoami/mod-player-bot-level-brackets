@@ -185,9 +185,9 @@ BotLevelBrackets.HubDisperse.Frequency = 30
 #
 #    BotLevelBrackets.HubDisperse.BotsPerCycle
 #        Description: Maximum number of bots to disperse per cycle across all hubs.
-#                     Lower values spread the teleport load over time.
-#        Default:     10
-BotLevelBrackets.HubDisperse.BotsPerCycle = 10
+#                     Higher values clear backlogs faster but cause more teleport load.
+#        Default:     50
+BotLevelBrackets.HubDisperse.BotsPerCycle = 50
 
 #
 #    BotLevelBrackets.HubDisperse.MaxBotsPerHub

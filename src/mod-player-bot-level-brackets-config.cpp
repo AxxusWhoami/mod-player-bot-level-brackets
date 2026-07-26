@@ -70,7 +70,7 @@ void LoadBotLevelBracketsConfig()
 
     g_HubDisperseEnabled                = sConfigMgr->GetOption<bool>("BotLevelBrackets.HubDisperse.Enabled", true);
     g_HubDisperseFrequency              = sConfigMgr->GetOption<uint32>("BotLevelBrackets.HubDisperse.Frequency", 30);
-    g_HubDisperseBotsPerCycle           = sConfigMgr->GetOption<uint32>("BotLevelBrackets.HubDisperse.BotsPerCycle", 10);
+    g_HubDisperseBotsPerCycle           = sConfigMgr->GetOption<uint32>("BotLevelBrackets.HubDisperse.BotsPerCycle", 50);
     g_HubDisperseMaxBotsPerHub          = sConfigMgr->GetOption<uint32>("BotLevelBrackets.HubDisperse.MaxBotsPerHub", 50);
 
     std::string excludeNames = sConfigMgr->GetOption<std::string>("BotLevelBrackets.ExcludeNames", "");

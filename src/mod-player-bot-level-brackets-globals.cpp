@@ -29,7 +29,7 @@ bool   g_TeleportOnLevelChange       = true;
 
 bool   g_HubDisperseEnabled          = true;
 uint32 g_HubDisperseFrequency        = 30;
-uint32 g_HubDisperseBotsPerCycle     = 10;
+uint32 g_HubDisperseBotsPerCycle     = 50;
 uint32 g_HubDisperseMaxBotsPerHub    = 50;
 
 std::unordered_set<uint64>                        g_SocialFriendsList;
