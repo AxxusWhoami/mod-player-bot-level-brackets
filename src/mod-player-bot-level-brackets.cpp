@@ -10,7 +10,7 @@ class BotLevelBracketsWorldScript : public WorldScript
 public:
     BotLevelBracketsWorldScript()
         : WorldScript("BotLevelBracketsWorldScript"),
-          m_timer(0), m_flaggedTimer(0), m_guildTrackerTimer(0), m_socialListTimer(0)
+          m_timer(0), m_flaggedTimer(0), m_guildTrackerTimer(0), m_socialListTimer(0), m_teleportTimer(0)
     { }
 
     void OnStartup() override
@@ -55,6 +55,7 @@ public:
         m_flaggedTimer      += diff;
         m_guildTrackerTimer += diff;
         m_socialListTimer   += diff;
+        m_teleportTimer     += diff;
 
         if (m_flaggedTimer >= g_BotDistFlaggedCheckFrequency * 1000)
         {
@@ -62,6 +63,12 @@ public:
                 LOG_INFO("server.loading", "[BotLevelBrackets] Pending Level Resets Triggering.");
             ProcessPendingLevelResets();
             m_flaggedTimer = 0;
+        }
+
+        if (m_teleportTimer >= 2000)
+        {
+            ProcessPendingTeleports();
+            m_teleportTimer = 0;
         }
 
         if (m_guildTrackerTimer >= g_GuildTrackerUpdateFrequency * 1000)
@@ -90,6 +97,7 @@ private:
     uint32 m_flaggedTimer;
     uint32 m_guildTrackerTimer;
     uint32 m_socialListTimer;
+    uint32 m_teleportTimer;
 };
 
 
@@ -104,6 +112,7 @@ public:
     void OnPlayerLogout(Player* player) override
     {
         RemoveBotFromPendingResets(player);
+        RemoveBotFromPendingTeleports(player);
     }
 
     void OnPlayerLogin(Player* player) override

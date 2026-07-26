@@ -16,7 +16,7 @@ static const TeleportDestination s_AllianceZones[] =
     { 0,  -3350.0f,  -3090.0f, 28.0f, 0.0f },     // 30-39: STV (Rebel Camp, Northern)
     { 1,  -4400.0f,  2480.0f, 93.0f, 0.0f },      // 40-49: Feralas (Feathermoon)
     { 0,  -10160.0f, -3400.0f, 22.0f, 0.0f },     // 50-59: Burning Steppes
-    { 0,  -8240.0f,  -2700.0f, 134.0f, 0.0f },   // 60-69: Hellfire Peninsula (Alliance base)
+    { 530, -8240.0f, -2700.0f, 134.0f, 0.0f },   // 60-69: Hellfire Peninsula (Alliance base)
     { 530, -3000.0f,  4150.0f, 3.0f, 0.0f },      // 70-79: Zangarmarsh (Telredor)
     { 571,  5800.0f,  500.0f, 660.0f, 0.0f },     // 80:    Borean Tundra (Valiance Keep)
 };
@@ -62,9 +62,6 @@ void TeleportBotToLevelZone(Player* bot, uint8 newLevel, uint8 teamID)
 
     const TeleportDestination& dest = zones[rangeIndex];
 
-    if (bot->IsBeingTeleported())
-        return;
-
     if (bot->IsMounted())
         bot->Dismount();
 
@@ -77,4 +74,61 @@ void TeleportBotToLevelZone(Player* bot, uint8 newLevel, uint8 teamID)
                  "[BotLevelBrackets] TeleportBotToLevelZone: {} bot '{}' teleported to level zone for range {} (map {}, {:.1f}, {:.1f}, {:.1f}).",
                  faction, bot->GetName(), rangeIndex + 1, dest.mapId, dest.x, dest.y, dest.z);
     }
+}
+
+
+void EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID)
+{
+    if (!bot)
+        return;
+
+    g_PendingTeleports[bot->GetGUID()] = PendingTeleportEntry{
+        bot->GetGUID(), newLevel, teamID,
+        static_cast<uint32>(time(nullptr))
+    };
+
+    if (g_BotDistFullDebugMode)
+        LOG_INFO("server.loading",
+                 "[BotLevelBrackets] EnqueuePendingTeleport: bot '{}' enqueued for teleport to level {} zone.",
+                 bot->GetName(), newLevel);
+}
+
+
+void ProcessPendingTeleports()
+{
+    if (g_PendingTeleports.empty())
+        return;
+
+    for (auto it = g_PendingTeleports.begin(); it != g_PendingTeleports.end(); )
+    {
+        Player* bot = ObjectAccessor::FindPlayer(it->second.botGuid);
+
+        if (!bot)
+        {
+            it = g_PendingTeleports.erase(it);
+            continue;
+        }
+
+        if (!bot->IsInWorld() || !bot->GetSession() || bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
+        {
+            it = g_PendingTeleports.erase(it);
+            continue;
+        }
+
+        if (bot->IsBeingTeleported())
+        {
+            ++it;
+            continue;
+        }
+
+        TeleportBotToLevelZone(bot, it->second.newLevel, it->second.teamID);
+        it = g_PendingTeleports.erase(it);
+    }
+}
+
+
+void RemoveBotFromPendingTeleports(Player* bot)
+{
+    if (bot)
+        g_PendingTeleports.erase(bot->GetGUID());
 }

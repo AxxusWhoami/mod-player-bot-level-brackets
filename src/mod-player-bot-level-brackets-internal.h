@@ -51,6 +51,15 @@ struct PendingResetEntry
     uint32                  enqueuedAt; ///< Unix timestamp when the entry was added
 };
 
+/// An entry in the pending teleport queue.
+struct PendingTeleportEntry
+{
+    ObjectGuid botGuid;
+    uint8      newLevel;
+    uint8      teamID;
+    uint32     enqueuedAt;
+};
+
 // =============================================================================
 // GLOBAL STATE  (defined in mod-player-bot-level-brackets-globals.cpp)
 // =============================================================================
@@ -87,6 +96,7 @@ extern std::unordered_set<std::string>                       g_ExcludeBotNames;
 extern std::unordered_set<uint32>                            g_RealPlayerGuildIds;
 extern std::unordered_set<uint32>                            g_PersistentRealPlayerGuildIds;
 extern std::unordered_map<ObjectGuid, PendingResetEntry>     g_PendingLevelResets;
+extern std::unordered_map<ObjectGuid, PendingTeleportEntry>   g_PendingTeleports;
 
 // =============================================================================
 // FUNCTION DECLARATIONS
@@ -127,6 +137,9 @@ int   GetOrFlagPlayerBracket(Player* player);
 
 // --- teleport ---
 void  TeleportBotToLevelZone(Player* bot, uint8 newLevel, uint8 teamID);
+void  EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID);
+void  ProcessPendingTeleports();
+void  RemoveBotFromPendingTeleports(Player* bot);
 
 /// Full distribution cycle. Pass a non-null ChatHandler to receive a summary reply.
 void RunDistributionCycle(ChatHandler* handler);
