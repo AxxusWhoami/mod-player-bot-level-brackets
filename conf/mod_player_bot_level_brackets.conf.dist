@@ -193,8 +193,8 @@ BotLevelBrackets.HubDisperse.BotsPerCycle = 10
 #    BotLevelBrackets.HubDisperse.MaxBotsPerHub
 #        Description: How many bots are allowed to remain in each hub as ambient population.
 #                     Bots beyond this number are teleported to their leveling zone.
-#        Default:     5
-BotLevelBrackets.HubDisperse.MaxBotsPerHub = 5
+#        Default:     50
+BotLevelBrackets.HubDisperse.MaxBotsPerHub = 50
 
 ##############################################
 # Alliance Level Brackets Configuration

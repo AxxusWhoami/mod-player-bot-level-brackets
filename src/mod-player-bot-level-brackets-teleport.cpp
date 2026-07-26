@@ -145,25 +145,26 @@ struct HubArea
     float  cx, cy, cz;
     float  radius;
     uint8  teamID;     // TEAM_ALLIANCE or TEAM_HORDE (or both)
+    uint8  maxLevel;   // only used for starting areas; bots above this level are dispersed
 };
 
 static const HubArea s_HubAreas[] =
 {
     // Stormwind City (Alliance)
-    { 0,  -8810.0f,  640.0f,  94.0f, 200.0f, TEAM_ALLIANCE },
+    { 0,  -8810.0f,  640.0f,  94.0f, 200.0f, TEAM_ALLIANCE, 0 },
     // Orgrimmar (Horde)
-    { 1,  1570.0f,  -4400.0f, 8.0f, 200.0f, TEAM_HORDE },
+    { 1,  1570.0f,  -4400.0f, 8.0f, 200.0f, TEAM_HORDE, 0 },
     // Dalaran (Northrend, both factions)
-    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_ALLIANCE },
-    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_HORDE },
+    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_ALLIANCE, 0 },
+    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_HORDE, 0 },
     // Ironforge (Alliance)
-    { 0,  -4980.0f, -940.0f,  501.0f, 150.0f, TEAM_ALLIANCE },
+    { 0,  -4980.0f, -940.0f,  501.0f, 150.0f, TEAM_ALLIANCE, 0 },
     // Undercity (Horde)
-    { 0,  1620.0f,  240.0f,  60.0f, 150.0f, TEAM_HORDE },
+    { 0,  1620.0f,  240.0f,  60.0f, 150.0f, TEAM_HORDE, 0 },
     // Darnassus (Alliance)
-    { 1,  9950.0f,  2330.0f, 1330.0f, 150.0f, TEAM_ALLIANCE },
+    { 1,  9950.0f,  2330.0f, 1330.0f, 150.0f, TEAM_ALLIANCE, 0 },
     // Thunder Bluff (Horde)
-    { 1,  -1290.0f, 150.0f,  130.0f, 150.0f, TEAM_HORDE },
+    { 1,  -1290.0f, 150.0f,  130.0f, 150.0f, TEAM_HORDE, 0 },
 };
 
 static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0]);
@@ -173,21 +174,21 @@ static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0
 static const HubArea s_StartingAreas[] =
 {
     // Elwynn Forest (Human start - Northshire Valley)
-    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE },
+    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE, 9 },
     // Dun Morogh (Dwarf/Gnome start - Coldridge Valley)
-    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE },
+    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE, 9 },
     // Teldrassil (Night Elf start - Shadowglen)
-    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE },
+    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE, 9 },
     // Durotar (Orc/Troll start - Valley of Trials)
-    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE },
+    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE, 9 },
     // Mulgore (Tauren start - Red Cloud Mesa)
-    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE },
+    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE, 9 },
     // Tirisfal Glades (Undead start - Deathknell)
-    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE },
+    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE, 9 },
     // Eversong Woods (Blood Elf start - Sunstrider Isle)
-    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE },
+    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE, 9 },
     // Azuremyst Isle (Draenei start - Ammen Vale)
-    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE },
+    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE, 9 },
 };
 
 static constexpr size_t s_NumStartingAreas = sizeof(s_StartingAreas) / sizeof(s_StartingAreas[0]);
@@ -303,7 +304,7 @@ void ProcessHubDisperse()
     // Track which bots we've already dispersed to avoid double-enqueue.
     std::set<ObjectGuid> alreadyDispersed;
 
-    // Phase 1: Disperse ALL bots found in starting zones.
+    // Phase 1: Disperse bots from starting zones whose level exceeds the zone's cap.
     for (Player* bot : allBots)
     {
         if (dispersed >= g_HubDisperseBotsPerCycle)
@@ -316,6 +317,9 @@ void ProcessHubDisperse()
             if (IsInArea(bot, s_StartingAreas[i]))
             {
                 uint8 level = bot->GetLevel();
+                if (level <= s_StartingAreas[i].maxLevel)
+                    break; // bot is still within the starting zone's level range
+
                 uint8 teamID = bot->GetTeamId();
                 int rangeIndex = GetLevelRangeIndex(level, teamID);
                 if (rangeIndex >= 0)
