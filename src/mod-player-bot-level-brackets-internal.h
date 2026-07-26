@@ -59,6 +59,10 @@ struct PendingTeleportEntry
     uint8      newLevel;
     uint8      teamID;
     uint32     enqueuedAt;
+    // When true, teleport to destX/Y/Z on destMapId instead of the level zone.
+    bool       useHubDest = false;
+    uint32     destMapId  = 0;
+    float      destX = 0.0f, destY = 0.0f, destZ = 0.0f, destO = 0.0f;
 };
 
 // =============================================================================
@@ -144,6 +148,7 @@ int   GetOrFlagPlayerBracket(Player* player);
 // --- teleport ---
 void  TeleportBotToLevelZone(Player* bot, uint8 newLevel, uint8 teamID);
 void  EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID);
+void  EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, float z, float o);
 void  ProcessPendingTeleports();
 void  RemoveBotFromPendingTeleports(Player* bot);
 void  ProcessHubDisperse();

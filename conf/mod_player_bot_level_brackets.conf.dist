@@ -191,8 +191,10 @@ BotLevelBrackets.HubDisperse.BotsPerCycle = 10
 
 #
 #    BotLevelBrackets.HubDisperse.MaxBotsPerHub
-#        Description: How many bots are allowed to remain in each hub as ambient population.
-#                     Bots beyond this number are teleported to their leveling zone.
+#        Description: Target population for each capital city hub. If a hub has
+#                     fewer bots than this number, bots from the wild are pulled
+#                     in to fill it. If a hub exceeds this number, the excess is
+#                     dispersed to their leveling zones.
 #        Default:     50
 BotLevelBrackets.HubDisperse.MaxBotsPerHub = 50
 
