@@ -29,7 +29,7 @@ static const TeleportDestination s_HordeZones[] =
     { 1,  1600.0f,  -4400.0f, 10.0f, 0.0f },      // 10-19: Durotar/Razor Hill
     { 1,  -600.0f,  -4700.0f, 10.0f, 0.0f },      // 20-29: Barrens (Crossroads)
     { 1,  -1600.0f, -3100.0f, 35.0f, 0.0f },      // 30-39: Desolace (Ghost Walker Post)
-    { 1,  -3000.0f,  -1400.0f, 12.0f, 0.0f },     // 40-49: Feralas (Camp Mojache)
+    { 1,  -2985.0f,  -1840.0f, 95.0f, 0.0f },     // 40-49: Feralas (Camp Mojache)
     { 1,  -1900.0f, -2200.0f, 92.0f, 0.0f },      // 50-59: Un'Goro Crater (entrance)
     { 530, -850.0f,  2700.0f, 48.0f, 0.0f },      // 60-69: Hellfire Peninsula (Horde base)
     { 530, -200.0f,  6850.0f, 21.0f, 0.0f },      // 70-79: Zangarmarsh (Zabra'jin)
