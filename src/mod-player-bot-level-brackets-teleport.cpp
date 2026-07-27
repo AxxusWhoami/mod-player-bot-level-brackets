@@ -210,25 +210,26 @@ struct HubArea
     float  radius;
     uint8  teamID;     // TEAM_ALLIANCE or TEAM_HORDE (or both)
     uint8  maxLevel;   // only used for starting areas; bots above this level are dispersed
+    uint8  minLevel;   // only used for hub areas; bots below this level are dispersed (0 = no min)
 };
 
 static const HubArea s_HubAreas[] =
 {
-    // Stormwind City (Alliance)
-    { 0,  -8810.0f,  640.0f,  94.0f, 200.0f, TEAM_ALLIANCE, 0 },
-    // Orgrimmar (Horde)
-    { 1,  1570.0f,  -4400.0f, 8.0f, 200.0f, TEAM_HORDE, 0 },
-    // Dalaran (Northrend, both factions)
-    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_ALLIANCE, 0 },
-    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_HORDE, 0 },
-    // Ironforge (Alliance)
-    { 0,  -4980.0f, -940.0f,  501.0f, 150.0f, TEAM_ALLIANCE, 0 },
-    // Undercity (Horde)
-    { 0,  1620.0f,  240.0f,  60.0f, 150.0f, TEAM_HORDE, 0 },
-    // Darnassus (Alliance)
-    { 1,  9950.0f,  2330.0f, 1330.0f, 150.0f, TEAM_ALLIANCE, 0 },
-    // Thunder Bluff (Horde)
-    { 1,  -1290.0f, 150.0f,  130.0f, 150.0f, TEAM_HORDE, 0 },
+    // Stormwind City (Alliance) — all levels welcome
+    { 0,  -8810.0f,  640.0f,  94.0f, 200.0f, TEAM_ALLIANCE, 0, 0 },
+    // Orgrimmar (Horde) — all levels welcome
+    { 1,  1570.0f,  -4400.0f, 8.0f, 200.0f, TEAM_HORDE, 0, 0 },
+    // Dalaran (Northrend, both factions) — only levels 68-80
+    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_ALLIANCE, 80, 68 },
+    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_HORDE, 80, 68 },
+    // Ironforge (Alliance) — all levels welcome
+    { 0,  -4980.0f, -940.0f,  501.0f, 150.0f, TEAM_ALLIANCE, 0, 0 },
+    // Undercity (Horde) — all levels welcome
+    { 0,  1620.0f,  240.0f,  60.0f, 150.0f, TEAM_HORDE, 0, 0 },
+    // Darnassus (Alliance) — all levels welcome
+    { 1,  9950.0f,  2330.0f, 1330.0f, 150.0f, TEAM_ALLIANCE, 0, 0 },
+    // Thunder Bluff (Horde) — all levels welcome
+    { 1,  -1290.0f, 150.0f,  130.0f, 150.0f, TEAM_HORDE, 0, 0 },
 };
 
 static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0]);
@@ -238,21 +239,21 @@ static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0
 static const HubArea s_StartingAreas[] =
 {
     // Elwynn Forest (Human start - Northshire Valley)
-    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE, 9 },
+    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE, 9, 0 },
     // Dun Morogh (Dwarf/Gnome start - Coldridge Valley)
-    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE, 9 },
+    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE, 9, 0 },
     // Teldrassil (Night Elf start - Shadowglen)
-    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE, 9 },
+    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE, 9, 0 },
     // Durotar (Orc/Troll start - Valley of Trials)
-    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE, 9 },
+    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE, 9, 0 },
     // Mulgore (Tauren start - Red Cloud Mesa)
-    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE, 9 },
+    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE, 9, 0 },
     // Tirisfal Glades (Undead start - Deathknell)
-    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE, 9 },
+    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE, 9, 0 },
     // Eversong Woods (Blood Elf start - Sunstrider Isle)
-    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE, 9 },
+    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE, 9, 0 },
     // Azuremyst Isle (Draenei start - Ammen Vale)
-    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE, 9 },
+    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE, 9, 0 },
 };
 
 static constexpr size_t s_NumStartingAreas = sizeof(s_StartingAreas) / sizeof(s_StartingAreas[0]);
@@ -342,14 +343,19 @@ static bool IsOnWrongMapForLevel(Player* bot)
 }
 
 
-void ProcessHubDisperse()
+// =============================================================================
+// Scheduler 1: Populate & disperse capital city hubs.
+// Fills hubs below quota (pulling bots from the wild) and disperses excess
+// or wrong-level bots from hubs. Respects per-hub minLevel/maxLevel (e.g.
+// Dalaran only accepts levels 68-80).
+// =============================================================================
+void ProcessHubPopulate()
 {
     if (!g_HubDisperseEnabled || !g_TeleportOnLevelChange)
         return;
 
     uint32 processed = 0;
 
-    // Gather all dispersable bots once.
     std::vector<Player*> allBots;
     allBots.reserve(200);
 
@@ -365,53 +371,110 @@ void ProcessHubDisperse()
     if (allBots.empty())
         return;
 
-    // Track which bots we've already processed to avoid double-enqueue.
     std::set<ObjectGuid> alreadyProcessed;
 
-    // ---- Phase 1 (PRIORITY): Disperse over-leveled bots from starting zones. ----
-    // This runs first so it is never starved by hub-filling work.
-    for (Player* bot : allBots)
-    {
-        if (processed >= g_HubDisperseBotsPerCycle)
-            break;
-        if (alreadyProcessed.count(bot->GetGUID()) > 0)
-            continue;
-
-        for (size_t i = 0; i < s_NumStartingAreas; ++i)
-        {
-            if (!IsInArea(bot, s_StartingAreas[i]))
-                continue;
-
-            uint8 level = bot->GetLevel();
-            if (level <= s_StartingAreas[i].maxLevel)
-                break; // bot is within the correct starting-zone level range
-
-            if (!IsBotSafeForLevelReset(bot))
-                break; // not safe to teleport right now; try next cycle
-
-            uint8 teamID = bot->GetTeamId();
-            int rangeIndex = GetLevelRangeIndex(level, teamID);
-            if (rangeIndex >= 0)
-            {
-                EnqueuePendingTeleport(bot, level, teamID);
-                alreadyProcessed.insert(bot->GetGUID());
-                ++processed;
-
-                if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.loading",
-                             "[BotLevelBrackets] HubDisperse Phase1: bot '{}' (level {}) dispersed from starting area {} to leveling zone.",
-                             bot->GetName(), level, i);
-            }
-            break;
-        }
-    }
-
-    // ---- Phase 2: Fill capital hubs that are below the ambiance quota. ----
+    // ---- Part A: Disperse wrong-level and excess bots from hubs. ----
     for (size_t hubIdx = 0; hubIdx < s_NumHubAreas && processed < g_HubDisperseBotsPerCycle; ++hubIdx)
     {
         const HubArea& hub = s_HubAreas[hubIdx];
 
-        // Count bots already in this hub.
+        std::vector<Player*> botsInHub;
+        botsInHub.reserve(30);
+
+        for (Player* bot : allBots)
+        {
+            if (!IsInArea(bot, hub))
+                continue;
+            botsInHub.push_back(bot);
+        }
+
+        if (botsInHub.empty())
+            continue;
+
+        // First pass: disperse bots whose level is outside [minLevel, maxLevel].
+        for (Player* bot : botsInHub)
+        {
+            if (processed >= g_HubDisperseBotsPerCycle)
+                break;
+            if (alreadyProcessed.count(bot->GetGUID()) > 0)
+                continue;
+
+            uint8 level = bot->GetLevel();
+            bool wrongLevel = false;
+            if (hub.minLevel > 0 && level < hub.minLevel)
+                wrongLevel = true;
+            if (hub.maxLevel > 0 && level > hub.maxLevel)
+                wrongLevel = true;
+
+            if (!wrongLevel)
+                continue;
+
+            if (!IsBotSafeForLevelReset(bot))
+                continue;
+
+            uint8 teamID = bot->GetTeamId();
+            int rangeIndex = GetLevelRangeIndex(level, teamID);
+            if (rangeIndex < 0)
+                continue;
+
+            EnqueuePendingTeleport(bot, level, teamID);
+            alreadyProcessed.insert(bot->GetGUID());
+            ++processed;
+
+            if (g_BotDistFullDebugMode)
+                LOG_INFO("server.loading",
+                         "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) wrong-level for hub {}, dispersed to leveling zone.",
+                         bot->GetName(), level, hubIdx);
+        }
+
+        // Second pass: if still over quota, disperse excess.
+        uint32 quota = g_HubDisperseMaxBotsPerHub;
+        uint32 remaining = 0;
+        for (Player* bot : botsInHub)
+        {
+            if (alreadyProcessed.count(bot->GetGUID()) > 0)
+                continue;
+            ++remaining;
+        }
+        if (remaining <= quota)
+            continue;
+
+        uint32 toDisperse = remaining - quota;
+        for (Player* bot : botsInHub)
+        {
+            if (processed >= g_HubDisperseBotsPerCycle)
+                break;
+            if (toDisperse == 0)
+                break;
+            if (alreadyProcessed.count(bot->GetGUID()) > 0)
+                continue;
+
+            if (!IsBotSafeForLevelReset(bot))
+                continue;
+
+            uint8 level = bot->GetLevel();
+            uint8 teamID = bot->GetTeamId();
+            int rangeIndex = GetLevelRangeIndex(level, teamID);
+            if (rangeIndex < 0)
+                continue;
+
+            EnqueuePendingTeleport(bot, level, teamID);
+            alreadyProcessed.insert(bot->GetGUID());
+            ++processed;
+            --toDisperse;
+
+            if (g_BotDistFullDebugMode)
+                LOG_INFO("server.loading",
+                         "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) excess in hub {}, dispersed to leveling zone.",
+                         bot->GetName(), level, hubIdx);
+        }
+    }
+
+    // ---- Part B: Fill hubs below quota by pulling bots from the wild. ----
+    for (size_t hubIdx = 0; hubIdx < s_NumHubAreas && processed < g_HubDisperseBotsPerCycle; ++hubIdx)
+    {
+        const HubArea& hub = s_HubAreas[hubIdx];
+
         uint32 currentCount = 0;
         for (Player* bot : allBots)
         {
@@ -436,6 +499,13 @@ void ProcessHubDisperse()
             if (bot->GetTeamId() != hub.teamID)
                 continue;
 
+            // Respect hub level restrictions (e.g. Dalaran 68-80).
+            uint8 level = bot->GetLevel();
+            if (hub.minLevel > 0 && level < hub.minLevel)
+                continue;
+            if (hub.maxLevel > 0 && level > hub.maxLevel)
+                continue;
+
             // Skip bots already in any hub.
             bool inAnyHub = false;
             for (size_t h = 0; h < s_NumHubAreas; ++h)
@@ -449,7 +519,7 @@ void ProcessHubDisperse()
             if (inAnyHub)
                 continue;
 
-            // Skip bots in starting zones.
+            // Skip bots in starting zones (handled by separate scheduler).
             bool inStartingArea = false;
             for (size_t s = 0; s < s_NumStartingAreas; ++s)
             {
@@ -477,67 +547,112 @@ void ProcessHubDisperse()
 
             if (g_BotDistFullDebugMode)
                 LOG_INFO("server.loading",
-                         "[BotLevelBrackets] HubDisperse Phase2: bot '{}' (level {}) pulled INTO hub {} ({}/{}).",
+                         "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) pulled INTO hub {} ({}/{}).",
                          bot->GetName(), bot->GetLevel(), hubIdx, quota - needed, quota);
         }
     }
 
-    // ---- Phase 3: Disperse excess bots from capital city hubs (keep quota). ----
-    for (size_t hubIdx = 0; hubIdx < s_NumHubAreas && processed < g_HubDisperseBotsPerCycle; ++hubIdx)
+    if (processed > 0 && g_BotDistFullDebugMode)
+        LOG_INFO("server.loading", "[BotLevelBrackets] HubPopulate: processed {} bots this cycle.", processed);
+}
+
+
+// =============================================================================
+// Scheduler 2: Disperse over-leveled bots from starting zones.
+// Bots whose level exceeds the starting zone's maxLevel are teleported to
+// their correct leveling zone so they can continue questing and progressing.
+// =============================================================================
+void ProcessStartingZoneDisperse()
+{
+    if (!g_HubDisperseEnabled || !g_TeleportOnLevelChange)
+        return;
+
+    uint32 processed = 0;
+
+    std::vector<Player*> allBots;
+    allBots.reserve(200);
+
+    const auto& players = ObjectAccessor::GetPlayers();
+    for (const auto& itr : players)
     {
-        const HubArea& hub = s_HubAreas[hubIdx];
-
-        std::vector<Player*> botsInHub;
-        botsInHub.reserve(20);
-
-        for (Player* bot : allBots)
-        {
-            if (alreadyProcessed.count(bot->GetGUID()) > 0)
-                continue;
-            if (IsInArea(bot, hub))
-                botsInHub.push_back(bot);
-        }
-
-        if (botsInHub.empty())
+        Player* bot = itr.second;
+        if (!IsBotDispersable(bot))
             continue;
-
-        uint32 quota = g_HubDisperseMaxBotsPerHub;
-        if (botsInHub.size() <= quota)
-            continue;
-
-        uint32 toDisperse = static_cast<uint32>(botsInHub.size()) - quota;
-
-        for (uint32 i = 0; i < toDisperse && processed < g_HubDisperseBotsPerCycle; ++i)
-        {
-            Player* bot = botsInHub[i];
-            if (!IsBotSafeForLevelReset(bot))
-                continue;
-
-            uint8 level = bot->GetLevel();
-            uint8 teamID = bot->GetTeamId();
-
-            int rangeIndex = GetLevelRangeIndex(level, teamID);
-            if (rangeIndex < 0)
-                continue;
-
-            EnqueuePendingTeleport(bot, level, teamID);
-            alreadyProcessed.insert(bot->GetGUID());
-            ++processed;
-
-            if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading",
-                         "[BotLevelBrackets] HubDisperse Phase3: bot '{}' (level {}) dispersed from hub {} to leveling zone.",
-                         bot->GetName(), level, hubIdx);
-        }
+        allBots.push_back(bot);
     }
 
-    // ---- Phase 4: Disperse any bot on the wrong map for its level bracket. ----
+    if (allBots.empty())
+        return;
+
     for (Player* bot : allBots)
     {
         if (processed >= g_HubDisperseBotsPerCycle)
             break;
-        if (alreadyProcessed.count(bot->GetGUID()) > 0)
+
+        for (size_t i = 0; i < s_NumStartingAreas; ++i)
+        {
+            if (!IsInArea(bot, s_StartingAreas[i]))
+                continue;
+
+            uint8 level = bot->GetLevel();
+            if (level <= s_StartingAreas[i].maxLevel)
+                break; // bot is within the correct starting-zone level range
+
+            if (!IsBotSafeForLevelReset(bot))
+                break; // not safe to teleport right now; try next cycle
+
+            uint8 teamID = bot->GetTeamId();
+            int rangeIndex = GetLevelRangeIndex(level, teamID);
+            if (rangeIndex >= 0)
+            {
+                EnqueuePendingTeleport(bot, level, teamID);
+                ++processed;
+
+                if (g_BotDistFullDebugMode)
+                    LOG_INFO("server.loading",
+                             "[BotLevelBrackets] StartingZoneDisperse: bot '{}' (level {}) dispersed from starting area {} to leveling zone.",
+                             bot->GetName(), level, i);
+            }
+            break;
+        }
+    }
+
+    if (processed > 0 && g_BotDistFullDebugMode)
+        LOG_INFO("server.loading", "[BotLevelBrackets] StartingZoneDisperse: processed {} bots this cycle.", processed);
+}
+
+
+// =============================================================================
+// Scheduler 3: Move bots from obsolete zones for their level.
+// Bots on a map that doesn't match their level bracket are teleported to the
+// correct zone so they can continue progressing.
+// =============================================================================
+void ProcessWrongMapDisperse()
+{
+    if (!g_HubDisperseEnabled || !g_TeleportOnLevelChange)
+        return;
+
+    uint32 processed = 0;
+
+    std::vector<Player*> allBots;
+    allBots.reserve(200);
+
+    const auto& players = ObjectAccessor::GetPlayers();
+    for (const auto& itr : players)
+    {
+        Player* bot = itr.second;
+        if (!IsBotDispersable(bot))
             continue;
+        allBots.push_back(bot);
+    }
+
+    if (allBots.empty())
+        return;
+
+    for (Player* bot : allBots)
+    {
+        if (processed >= g_HubDisperseBotsPerCycle)
+            break;
 
         if (!IsOnWrongMapForLevel(bot))
             continue;
@@ -552,15 +667,14 @@ void ProcessHubDisperse()
             continue;
 
         EnqueuePendingTeleport(bot, level, teamID);
-        alreadyProcessed.insert(bot->GetGUID());
         ++processed;
 
         if (g_BotDistFullDebugMode)
             LOG_INFO("server.loading",
-                     "[BotLevelBrackets] HubDisperse Phase4: bot '{}' (level {}) on wrong map {} dispersed to leveling zone.",
+                     "[BotLevelBrackets] WrongMapDisperse: bot '{}' (level {}) on wrong map {} dispersed to leveling zone.",
                      bot->GetName(), level, bot->GetMapId());
     }
 
     if (processed > 0 && g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] HubDisperse: processed {} bots this cycle.", processed);
+        LOG_INFO("server.loading", "[BotLevelBrackets] WrongMapDisperse: processed {} bots this cycle.", processed);
 }

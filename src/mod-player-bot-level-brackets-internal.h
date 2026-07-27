@@ -97,9 +97,12 @@ extern bool   g_SyncFactions;
 extern bool   g_TeleportOnLevelChange;
 
 extern bool   g_HubDisperseEnabled;
-extern uint32 g_HubDisperseFrequency;
 extern uint32 g_HubDisperseBotsPerCycle;
 extern uint32 g_HubDisperseMaxBotsPerHub;
+
+extern uint32 g_HubPopulateFrequency;
+extern uint32 g_StartingZoneDisperseFrequency;
+extern uint32 g_WrongMapDisperseFrequency;
 
 extern std::unordered_set<uint64>                            g_SocialFriendsList;
 extern std::unordered_set<std::string>                       g_ExcludeBotNames;
@@ -151,7 +154,9 @@ void  EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID);
 void  EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, float z, float o);
 void  ProcessPendingTeleports();
 void  RemoveBotFromPendingTeleports(Player* bot);
-void  ProcessHubDisperse();
+void  ProcessHubPopulate();
+void  ProcessStartingZoneDisperse();
+void  ProcessWrongMapDisperse();
 
 /// Full distribution cycle. Pass a non-null ChatHandler to receive a summary reply.
 void RunDistributionCycle(ChatHandler* handler);

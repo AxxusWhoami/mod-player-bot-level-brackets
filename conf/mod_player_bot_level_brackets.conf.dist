@@ -177,14 +177,8 @@ BotLevelBrackets.TeleportOnLevelChange = 1
 BotLevelBrackets.HubDisperse.Enabled = 1
 
 #
-#    BotLevelBrackets.HubDisperse.Frequency
-#        Description: How often (in seconds) the hub dispersal check runs.
-#        Default:     30
-BotLevelBrackets.HubDisperse.Frequency = 30
-
-#
 #    BotLevelBrackets.HubDisperse.BotsPerCycle
-#        Description: Maximum number of bots to disperse per cycle across all hubs.
+#        Description: Maximum number of bots to process per cycle for any scheduler.
 #                     Higher values clear backlogs faster but cause more teleport load.
 #        Default:     50
 BotLevelBrackets.HubDisperse.BotsPerCycle = 50
@@ -197,6 +191,39 @@ BotLevelBrackets.HubDisperse.BotsPerCycle = 50
 #                     dispersed to their leveling zones.
 #        Default:     50
 BotLevelBrackets.HubDisperse.MaxBotsPerHub = 50
+
+##############################################
+# Scheduler Frequencies
+##############################################
+# Three independent schedulers run on separate timers. Each handles one
+# concern so that no single task starves the others.
+#
+
+#
+#    BotLevelBrackets.HubPopulate.Frequency
+#        Description: How often (in seconds) the hub populate scheduler runs.
+#                     This scheduler fills capitals below quota and disperses
+#                     excess or wrong-level bots from hubs (e.g. Dalaran only
+#                     accepts levels 68-80).
+#        Default:     30
+BotLevelBrackets.HubPopulate.Frequency = 30
+
+#
+#    BotLevelBrackets.StartingZoneDisperse.Frequency
+#        Description: How often (in seconds) the starting-zone dispersal runs.
+#                     Bots whose level exceeds the starting zone's cap are
+#                     teleported to their correct leveling zone to continue
+#                     questing and progressing.
+#        Default:     15
+BotLevelBrackets.StartingZoneDisperse.Frequency = 15
+
+#
+#    BotLevelBrackets.WrongMapDisperse.Frequency
+#        Description: How often (in seconds) the wrong-map dispersal runs.
+#                     Bots on a map that doesn't match their level bracket are
+#                     teleported to the correct zone.
+#        Default:     60
+BotLevelBrackets.WrongMapDisperse.Frequency = 60
 
 ##############################################
 # Alliance Level Brackets Configuration

@@ -10,7 +10,8 @@ class BotLevelBracketsWorldScript : public WorldScript
 public:
     BotLevelBracketsWorldScript()
         : WorldScript("BotLevelBracketsWorldScript"),
-          m_timer(0), m_flaggedTimer(0), m_guildTrackerTimer(0), m_socialListTimer(0), m_teleportTimer(0), m_hubDisperseTimer(0)
+          m_timer(0), m_flaggedTimer(0), m_guildTrackerTimer(0), m_socialListTimer(0), m_teleportTimer(0),
+          m_hubPopulateTimer(0), m_startingZoneTimer(0), m_wrongMapTimer(0)
     { }
 
     void OnStartup() override
@@ -28,9 +29,10 @@ public:
         if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
         {
             LOG_INFO("server.loading",
-                     "[BotLevelBrackets] Module loaded. Check: {}s, Flagged: {}s, Social: {}s, GuildTracker: {}s.",
+                     "[BotLevelBrackets] Module loaded. Check: {}s, Flagged: {}s, Social: {}s, GuildTracker: {}s, HubPopulate: {}s, StartingZone: {}s, WrongMap: {}s.",
                      g_BotDistCheckFrequency, g_BotDistFlaggedCheckFrequency,
-                     g_SocialListRefreshFrequency, g_GuildTrackerUpdateFrequency);
+                     g_SocialListRefreshFrequency, g_GuildTrackerUpdateFrequency,
+                     g_HubPopulateFrequency, g_StartingZoneDisperseFrequency, g_WrongMapDisperseFrequency);
             for (uint8 i = 0; i < g_NumRanges; ++i)
                 LOG_INFO("server.loading", "[BotLevelBrackets] Alliance Range {}: {}-{}, Desired: {}%",
                          i + 1, g_AllianceLevelRanges[i].lower, g_AllianceLevelRanges[i].upper,
@@ -55,8 +57,10 @@ public:
         m_flaggedTimer      += diff;
         m_guildTrackerTimer += diff;
         m_socialListTimer   += diff;
-        m_teleportTimer     += diff;
-        m_hubDisperseTimer  += diff;
+        m_teleportTimer      += diff;
+        m_hubPopulateTimer   += diff;
+        m_startingZoneTimer  += diff;
+        m_wrongMapTimer       += diff;
 
         if (m_flaggedTimer >= g_BotDistFlaggedCheckFrequency * 1000)
         {
@@ -72,10 +76,22 @@ public:
             m_teleportTimer = 0;
         }
 
-        if (m_hubDisperseTimer >= g_HubDisperseFrequency * 1000)
+        if (m_hubPopulateTimer >= g_HubPopulateFrequency * 1000)
         {
-            ProcessHubDisperse();
-            m_hubDisperseTimer = 0;
+            ProcessHubPopulate();
+            m_hubPopulateTimer = 0;
+        }
+
+        if (m_startingZoneTimer >= g_StartingZoneDisperseFrequency * 1000)
+        {
+            ProcessStartingZoneDisperse();
+            m_startingZoneTimer = 0;
+        }
+
+        if (m_wrongMapTimer >= g_WrongMapDisperseFrequency * 1000)
+        {
+            ProcessWrongMapDisperse();
+            m_wrongMapTimer = 0;
         }
 
         if (m_guildTrackerTimer >= g_GuildTrackerUpdateFrequency * 1000)
@@ -105,7 +121,9 @@ private:
     uint32 m_guildTrackerTimer;
     uint32 m_socialListTimer;
     uint32 m_teleportTimer;
-    uint32 m_hubDisperseTimer;
+    uint32 m_hubPopulateTimer;
+    uint32 m_startingZoneTimer;
+    uint32 m_wrongMapTimer;
 };
 
 
