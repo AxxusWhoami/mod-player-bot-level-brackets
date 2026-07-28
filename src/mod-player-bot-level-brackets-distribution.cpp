@@ -5,18 +5,36 @@ int GetLevelRangeIndex(uint8 level, uint8 teamID)
     if (level < g_RandomBotMinLevel || level > g_RandomBotMaxLevel)
         return -1;
 
+    // Fast path: contiguous 10-level brackets (1-9, 10-19, ..., 80).
+    // Works for the default config where ranges are contiguous and non-overlapping.
+    static thread_local int8_t allianceLut[256];
+    static thread_local int8_t hordeLut[256];
+    static thread_local bool lutInit = false;
+    static thread_local uint8_t lutNumRanges = 0;
+    static thread_local uint8_t lutMinLevel = 0;
+    static thread_local uint8_t lutMaxLevel = 0;
+
+    if (!lutInit || lutNumRanges != g_NumRanges || lutMinLevel != g_RandomBotMinLevel || lutMaxLevel != g_RandomBotMaxLevel)
+    {
+        std::fill_n(allianceLut, 256, int8_t(-1));
+        std::fill_n(hordeLut, 256, int8_t(-1));
+        for (uint8 i = 0; i < g_NumRanges; ++i)
+        {
+            for (uint8 lv = g_AllianceLevelRanges[i].lower; lv <= g_AllianceLevelRanges[i].upper; ++lv)
+                allianceLut[lv] = static_cast<int8_t>(i);
+            for (uint8 lv = g_HordeLevelRanges[i].lower; lv <= g_HordeLevelRanges[i].upper; ++lv)
+                hordeLut[lv] = static_cast<int8_t>(i);
+        }
+        lutInit = true;
+        lutNumRanges = g_NumRanges;
+        lutMinLevel = g_RandomBotMinLevel;
+        lutMaxLevel = g_RandomBotMaxLevel;
+    }
+
     if (teamID == TEAM_ALLIANCE)
-    {
-        for (uint8 i = 0; i < g_NumRanges; ++i)
-            if (level >= g_AllianceLevelRanges[i].lower && level <= g_AllianceLevelRanges[i].upper)
-                return i;
-    }
+        return allianceLut[level];
     else if (teamID == TEAM_HORDE)
-    {
-        for (uint8 i = 0; i < g_NumRanges; ++i)
-            if (level >= g_HordeLevelRanges[i].lower && level <= g_HordeLevelRanges[i].upper)
-                return i;
-    }
+        return hordeLut[level];
 
     return -1;
 }

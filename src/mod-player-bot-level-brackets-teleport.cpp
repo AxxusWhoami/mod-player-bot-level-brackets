@@ -316,11 +316,16 @@ static bool IsInArea(const Player* bot, const HubArea& area)
         return false;
 
     float dx = bot->GetPositionX() - area.cx;
+    if (dx > area.radius || dx < -area.radius)
+        return false;
     float dy = bot->GetPositionY() - area.cy;
+    if (dy > area.radius || dy < -area.radius)
+        return false;
     float dz = bot->GetPositionZ() - area.cz;
-    float distSq = dx * dx + dy * dy + dz * dz;
+    if (dz > area.radius || dz < -area.radius)
+        return false;
 
-    return distSq <= area.radius * area.radius;
+    return (dx * dx + dy * dy + dz * dz) <= area.radius * area.radius;
 }
 
 
@@ -356,50 +361,75 @@ void ProcessHubPopulate()
 
     uint32 processed = 0;
 
-    std::vector<Player*> allBots;
-    allBots.reserve(200);
+    struct BotInfo {
+        Player* bot;
+        int8_t hubIdx;      // -1 if not in any hub
+        bool    inStarting;  // true if in any starting area
+    };
 
     const auto& players = ObjectAccessor::GetPlayers();
+    std::vector<BotInfo> allBots;
+    allBots.reserve(players.size());
+    std::vector<uint32> hubCounts(s_NumHubAreas, 0);
+
     for (const auto& itr : players)
     {
         Player* bot = itr.second;
         if (!IsBotDispersable(bot))
             continue;
-        allBots.push_back(bot);
+
+        BotInfo info{bot, -1, false};
+        for (size_t h = 0; h < s_NumHubAreas; ++h)
+        {
+            if (IsInArea(bot, s_HubAreas[h]))
+            {
+                info.hubIdx = static_cast<int8_t>(h);
+                ++hubCounts[h];
+                break;
+            }
+        }
+        for (size_t s = 0; s < s_NumStartingAreas; ++s)
+        {
+            if (IsInArea(bot, s_StartingAreas[s]))
+            {
+                info.inStarting = true;
+                break;
+            }
+        }
+        allBots.push_back(info);
     }
 
     if (allBots.empty())
         return;
 
-    std::set<ObjectGuid> alreadyProcessed;
+    std::unordered_set<ObjectGuid> alreadyProcessed;
 
     // ---- Part A: Disperse wrong-level and excess bots from hubs. ----
     for (size_t hubIdx = 0; hubIdx < s_NumHubAreas && processed < g_HubDisperseBotsPerCycle; ++hubIdx)
     {
         const HubArea& hub = s_HubAreas[hubIdx];
 
-        std::vector<Player*> botsInHub;
+        std::vector<const BotInfo*> botsInHub;
         botsInHub.reserve(30);
 
-        for (Player* bot : allBots)
+        for (const auto& info : allBots)
         {
-            if (!IsInArea(bot, hub))
-                continue;
-            botsInHub.push_back(bot);
+            if (info.hubIdx == static_cast<int8_t>(hubIdx))
+                botsInHub.push_back(&info);
         }
 
         if (botsInHub.empty())
             continue;
 
         // First pass: disperse bots whose level is outside [minLevel, maxLevel].
-        for (Player* bot : botsInHub)
+        for (const BotInfo* info : botsInHub)
         {
             if (processed >= g_HubDisperseBotsPerCycle)
                 break;
-            if (alreadyProcessed.count(bot->GetGUID()) > 0)
+            if (alreadyProcessed.count(info->bot->GetGUID()) > 0)
                 continue;
 
-            uint8 level = bot->GetLevel();
+            uint8 level = info->bot->GetLevel();
             bool wrongLevel = false;
             if (hub.minLevel > 0 && level < hub.minLevel)
                 wrongLevel = true;
@@ -409,30 +439,30 @@ void ProcessHubPopulate()
             if (!wrongLevel)
                 continue;
 
-            if (!IsBotSafeForLevelReset(bot))
+            if (!IsBotSafeForLevelReset(info->bot))
                 continue;
 
-            uint8 teamID = bot->GetTeamId();
+            uint8 teamID = info->bot->GetTeamId();
             int rangeIndex = GetLevelRangeIndex(level, teamID);
             if (rangeIndex < 0)
                 continue;
 
-            EnqueuePendingTeleport(bot, level, teamID);
-            alreadyProcessed.insert(bot->GetGUID());
+            EnqueuePendingTeleport(info->bot, level, teamID);
+            alreadyProcessed.insert(info->bot->GetGUID());
             ++processed;
 
             if (g_BotDistFullDebugMode)
                 LOG_INFO("server.loading",
                          "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) wrong-level for hub {}, dispersed to leveling zone.",
-                         bot->GetName(), level, hubIdx);
+                         info->bot->GetName(), level, hubIdx);
         }
 
         // Second pass: if still over quota, disperse excess.
         uint32 quota = g_HubDisperseMaxBotsPerHub;
         uint32 remaining = 0;
-        for (Player* bot : botsInHub)
+        for (const BotInfo* info : botsInHub)
         {
-            if (alreadyProcessed.count(bot->GetGUID()) > 0)
+            if (alreadyProcessed.count(info->bot->GetGUID()) > 0)
                 continue;
             ++remaining;
         }
@@ -440,33 +470,33 @@ void ProcessHubPopulate()
             continue;
 
         uint32 toDisperse = remaining - quota;
-        for (Player* bot : botsInHub)
+        for (const BotInfo* info : botsInHub)
         {
             if (processed >= g_HubDisperseBotsPerCycle)
                 break;
             if (toDisperse == 0)
                 break;
-            if (alreadyProcessed.count(bot->GetGUID()) > 0)
+            if (alreadyProcessed.count(info->bot->GetGUID()) > 0)
                 continue;
 
-            if (!IsBotSafeForLevelReset(bot))
+            if (!IsBotSafeForLevelReset(info->bot))
                 continue;
 
-            uint8 level = bot->GetLevel();
-            uint8 teamID = bot->GetTeamId();
+            uint8 level = info->bot->GetLevel();
+            uint8 teamID = info->bot->GetTeamId();
             int rangeIndex = GetLevelRangeIndex(level, teamID);
             if (rangeIndex < 0)
                 continue;
 
-            EnqueuePendingTeleport(bot, level, teamID);
-            alreadyProcessed.insert(bot->GetGUID());
+            EnqueuePendingTeleport(info->bot, level, teamID);
+            alreadyProcessed.insert(info->bot->GetGUID());
             ++processed;
             --toDisperse;
 
             if (g_BotDistFullDebugMode)
                 LOG_INFO("server.loading",
                          "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) excess in hub {}, dispersed to leveling zone.",
-                         bot->GetName(), level, hubIdx);
+                         info->bot->GetName(), level, hubIdx);
         }
     }
 
@@ -475,64 +505,36 @@ void ProcessHubPopulate()
     {
         const HubArea& hub = s_HubAreas[hubIdx];
 
-        uint32 currentCount = 0;
-        for (Player* bot : allBots)
-        {
-            if (IsInArea(bot, hub))
-                ++currentCount;
-        }
-
+        uint32 currentCount = hubCounts[hubIdx];
         uint32 quota = g_HubDisperseMaxBotsPerHub;
         if (currentCount >= quota)
             continue;
 
         uint32 needed = quota - currentCount;
 
-        for (Player* bot : allBots)
+        for (const auto& info : allBots)
         {
             if (processed >= g_HubDisperseBotsPerCycle)
                 break;
             if (needed == 0)
                 break;
-            if (alreadyProcessed.count(bot->GetGUID()) > 0)
+            if (alreadyProcessed.count(info.bot->GetGUID()) > 0)
                 continue;
-            if (bot->GetTeamId() != hub.teamID)
+            if (info.bot->GetTeamId() != hub.teamID)
+                continue;
+            if (info.hubIdx >= 0)
+                continue;
+            if (info.inStarting)
                 continue;
 
             // Respect hub level restrictions (e.g. Dalaran 68-80).
-            uint8 level = bot->GetLevel();
+            uint8 level = info.bot->GetLevel();
             if (hub.minLevel > 0 && level < hub.minLevel)
                 continue;
             if (hub.maxLevel > 0 && level > hub.maxLevel)
                 continue;
 
-            // Skip bots already in any hub.
-            bool inAnyHub = false;
-            for (size_t h = 0; h < s_NumHubAreas; ++h)
-            {
-                if (IsInArea(bot, s_HubAreas[h]))
-                {
-                    inAnyHub = true;
-                    break;
-                }
-            }
-            if (inAnyHub)
-                continue;
-
-            // Skip bots in starting zones (handled by separate scheduler).
-            bool inStartingArea = false;
-            for (size_t s = 0; s < s_NumStartingAreas; ++s)
-            {
-                if (IsInArea(bot, s_StartingAreas[s]))
-                {
-                    inStartingArea = true;
-                    break;
-                }
-            }
-            if (inStartingArea)
-                continue;
-
-            if (!IsBotSafeForLevelReset(bot))
+            if (!IsBotSafeForLevelReset(info.bot))
                 continue;
 
             float angle  = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 2.0f * static_cast<float>(M_PI);
@@ -540,15 +542,15 @@ void ProcessHubPopulate()
             float dx = hub.cx + cosf(angle) * offset;
             float dy = hub.cy + sinf(angle) * offset;
 
-            EnqueuePendingHubTeleport(bot, hub.mapId, dx, dy, hub.cz, angle);
-            alreadyProcessed.insert(bot->GetGUID());
+            EnqueuePendingHubTeleport(info.bot, hub.mapId, dx, dy, hub.cz, angle);
+            alreadyProcessed.insert(info.bot->GetGUID());
             ++processed;
             --needed;
 
             if (g_BotDistFullDebugMode)
                 LOG_INFO("server.loading",
                          "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) pulled INTO hub {} ({}/{}).",
-                         bot->GetName(), bot->GetLevel(), hubIdx, quota - needed, quota);
+                         info.bot->GetName(), info.bot->GetLevel(), hubIdx, quota - needed, quota);
         }
     }
 
@@ -569,10 +571,10 @@ void ProcessStartingZoneDisperse()
 
     uint32 processed = 0;
 
-    std::vector<Player*> allBots;
-    allBots.reserve(200);
-
     const auto& players = ObjectAccessor::GetPlayers();
+    std::vector<Player*> allBots;
+    allBots.reserve(players.size());
+
     for (const auto& itr : players)
     {
         Player* bot = itr.second;
@@ -634,10 +636,10 @@ void ProcessWrongMapDisperse()
 
     uint32 processed = 0;
 
-    std::vector<Player*> allBots;
-    allBots.reserve(200);
-
     const auto& players = ObjectAccessor::GetPlayers();
+    std::vector<Player*> allBots;
+    allBots.reserve(players.size());
+
     for (const auto& itr : players)
     {
         Player* bot = itr.second;
