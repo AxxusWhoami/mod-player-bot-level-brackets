@@ -144,6 +144,12 @@ void ProcessPendingTeleports()
             continue;
         }
 
+        if (IsBotInProtectedDuelZone(bot))
+        {
+            it = g_PendingTeleports.erase(it);
+            continue;
+        }
+
         if (bot->IsBeingTeleported())
         {
             ++it;
@@ -289,6 +295,8 @@ static bool IsBotDispersable(Player* bot)
     if (!IsBracketPlayerBot(bot) || !IsPlayerRandomBot(bot))
         return false;
     if (IsBotExcluded(bot))
+        return false;
+    if (IsBotInProtectedDuelZone(bot))
         return false;
     if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot))
         return false;

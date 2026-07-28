@@ -131,6 +131,9 @@ int GetOrFlagPlayerBracket(Player* player)
     if (isBot && IsBotExcluded(player))
         return -1;
 
+    if (isBot && IsBotInProtectedDuelZone(player))
+        return -1;
+
     if (isBot && g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(player))
         return -1;
 

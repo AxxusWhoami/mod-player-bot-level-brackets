@@ -70,6 +70,13 @@ bool IsBotSafeForLevelReset(Player* bot)
             LOG_INFO("server.loading", "[BotLevelBrackets] Null or invalid bot pointer.");
         return false;
     }
+    if (IsBotInProtectedDuelZone(bot))
+    {
+        if (g_BotDistFullDebugMode)
+            LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} (Level {}) is in a protected duel zone (zone {}). Skipping.",
+                     bot->GetName(), bot->GetLevel(), bot->GetZoneId());
+        return false;
+    }
     if (!bot->IsInWorld())
     {
         if (g_BotDistFullDebugMode)
@@ -121,4 +128,14 @@ bool IsBotExcluded(Player* bot)
     if (!bot)
         return false;
     return g_ExcludeBotNames.count(bot->GetName()) > 0;
+}
+
+bool IsBotInProtectedDuelZone(Player* bot)
+{
+    if (!bot || !bot->IsInWorld())
+        return false;
+    uint32 zoneId = bot->GetZoneId();
+    // Zone 12: Elwynn Forest (Stormwind duels)
+    // Zone 14: Durotar (Orgrimmar duels)
+    return zoneId == 12 || zoneId == 14;
 }

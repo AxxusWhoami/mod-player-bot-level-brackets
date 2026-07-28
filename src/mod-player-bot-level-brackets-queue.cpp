@@ -68,6 +68,12 @@ void ProcessPendingLevelResets()
             continue;
         }
 
+        if (IsBotInProtectedDuelZone(bot))
+        {
+            it = g_PendingLevelResets.erase(it);
+            continue;
+        }
+
         int targetRange = it->second.targetRange;
 
         if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot))

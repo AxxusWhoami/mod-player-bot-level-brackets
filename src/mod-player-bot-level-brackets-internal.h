@@ -129,6 +129,7 @@ bool BotInFriendList(Player* bot);
 bool BotInArenaTeam(Player* bot);
 bool IsBotSafeForLevelReset(Player* bot);
 bool IsBotExcluded(Player* bot);
+bool IsBotInProtectedDuelZone(Player* bot);
 
 // --- guild / social ---
 void LoadSocialFriendList();
