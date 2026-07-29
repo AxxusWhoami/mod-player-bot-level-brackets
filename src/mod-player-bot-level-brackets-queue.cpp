@@ -6,27 +6,34 @@ void RemoveBotFromPendingResets(Player* bot)
 }
 
 
-void EnqueuePendingReset(ObjectGuid guid, int targetRange, const LevelRangeConfig* factionRanges)
+bool EnqueuePendingReset(ObjectGuid guid, int targetRange, const LevelRangeConfig* factionRanges)
 {
     if (g_MaxPendingQueueSize > 0 && g_PendingLevelResets.size() >= g_MaxPendingQueueSize)
     {
         if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
         {
-            LOG_WARN("server.loading",
+            LOG_WARN("server.world",
                      "[BotLevelBrackets] Pending queue is full ({}/{}). Bot {} not enqueued.",
                      g_PendingLevelResets.size(), g_MaxPendingQueueSize, guid.ToString());
         }
-        return;
+        return false;
     }
     uint32 now = static_cast<uint32>(time(nullptr));
-    g_PendingLevelResets.emplace(guid, PendingResetEntry{guid, targetRange, factionRanges, now});
+    auto result = g_PendingLevelResets.emplace(guid, PendingResetEntry{guid, targetRange, factionRanges, now});
+    if (!result.second)
+    {
+        if (g_BotDistFullDebugMode)
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} already in pending queue, skipping.", guid.ToString());
+        return false;
+    }
+    return true;
 }
 
 
 void ProcessPendingLevelResets()
 {
     if (g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] Processing {} pending resets...", g_PendingLevelResets.size());
+        LOG_INFO("server.world", "[BotLevelBrackets] Processing {} pending resets...", g_PendingLevelResets.size());
 
     if (g_PendingLevelResets.empty())
         return;
@@ -39,11 +46,14 @@ void ProcessPendingLevelResets()
         if (g_FlaggedProcessLimit > 0 && processed >= g_FlaggedProcessLimit)
             break;
 
-        if (g_PendingQueueTTL > 0 && (now - it->second.enqueuedAt) > g_PendingQueueTTL)
+        // TTL check: use configured TTL, or fallback to 1 hour if TTL is 0 (disabled)
+        // to prevent perpetual queue entries from bots stuck in combat, BG, etc.
+        uint32 effectiveTTL = (g_PendingQueueTTL > 0) ? g_PendingQueueTTL : 3600;
+        if ((now - it->second.enqueuedAt) > effectiveTTL)
         {
             if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading", "[BotLevelBrackets] Pending entry for {} expired (TTL {}s). Dropping.",
-                         it->first.ToString(), g_PendingQueueTTL);
+                LOG_INFO("server.world", "[BotLevelBrackets] Pending entry for {} expired (TTL {}s). Dropping.",
+                         it->first.ToString(), effectiveTTL);
             it = g_PendingLevelResets.erase(it);
             continue;
         }
@@ -99,7 +109,7 @@ void ProcessPendingLevelResets()
             AdjustBotToRange(bot, targetRange, it->second.factionRanges);
             if (g_BotDistFullDebugMode)
             {
-                LOG_INFO("server.loading", "[BotLevelBrackets] Bot '{}' successfully reset to level range {}-{}.",
+                LOG_INFO("server.world", "[BotLevelBrackets] Bot '{}' successfully reset to level range {}-{}.",
                          bot->GetName(),
                          it->second.factionRanges[targetRange].lower,
                          it->second.factionRanges[targetRange].upper);

@@ -10,11 +10,9 @@ int GetLevelRangeIndex(uint8 level, uint8 teamID)
     static thread_local int8_t allianceLut[256];
     static thread_local int8_t hordeLut[256];
     static thread_local bool lutInit = false;
-    static thread_local uint8_t lutNumRanges = 0;
-    static thread_local uint8_t lutMinLevel = 0;
-    static thread_local uint8_t lutMaxLevel = 0;
+    static thread_local uint32 lutGeneration = 0;
 
-    if (!lutInit || lutNumRanges != g_NumRanges || lutMinLevel != g_RandomBotMinLevel || lutMaxLevel != g_RandomBotMaxLevel)
+    if (!lutInit || lutGeneration != g_ConfigGeneration)
     {
         std::fill_n(allianceLut, 256, int8_t(-1));
         std::fill_n(hordeLut, 256, int8_t(-1));
@@ -26,9 +24,7 @@ int GetLevelRangeIndex(uint8 level, uint8 teamID)
                 hordeLut[lv] = static_cast<int8_t>(i);
         }
         lutInit = true;
-        lutNumRanges = g_NumRanges;
-        lutMinLevel = g_RandomBotMinLevel;
-        lutMaxLevel = g_RandomBotMaxLevel;
+        lutGeneration = g_ConfigGeneration;
     }
 
     if (teamID == TEAM_ALLIANCE)
@@ -69,7 +65,7 @@ void AdjustBotToRange(Player* bot, int targetRangeIndex, const LevelRangeConfig*
             if (g_BotDistFullDebugMode)
             {
                 std::string playerFaction = IsAlliancePlayerBot(bot) ? "Alliance" : "Horde";
-                LOG_INFO("server.loading",
+                LOG_INFO("server.world",
                          "[BotLevelBrackets] AdjustBotToRange: Cannot assign {} DK '{}' ({}) to range {}-{} (below 55).",
                          playerFaction, bot->GetName(), botOriginalLevel, lowerBound, upperBound);
             }
@@ -89,7 +85,7 @@ void AdjustBotToRange(Player* bot, int targetRangeIndex, const LevelRangeConfig*
             if (g_BotDistFullDebugMode)
             {
                 std::string playerFaction = IsAlliancePlayerBot(bot) ? "Alliance" : "Horde";
-                LOG_INFO("server.loading",
+                LOG_INFO("server.world",
                          "[BotLevelBrackets] AdjustBotToRange: Invalid range {}-{} for {} bot '{}'.",
                          range.lower, range.upper, playerFaction, bot->GetName());
             }
@@ -112,7 +108,7 @@ void AdjustBotToRange(Player* bot, int targetRangeIndex, const LevelRangeConfig*
         PlayerbotAI* botAI = PlayerbotsMgr::instance().GetPlayerbotAI(bot);
         std::string playerClassName = botAI ? botAI->GetChatHelper()->FormatClass(bot->getClass()) : "Unknown";
         std::string playerFaction = IsAlliancePlayerBot(bot) ? "Alliance" : "Horde";
-        LOG_INFO("server.loading",
+        LOG_INFO("server.world",
                  "[BotLevelBrackets] AdjustBotToRange: {} Bot '{}' - {} ({}) -> level {} (range {}-{}).",
                  playerFaction, bot->GetName(), playerClassName.c_str(), botOriginalLevel, newLevel,
                  factionRanges[targetRangeIndex].lower, factionRanges[targetRangeIndex].upper);
@@ -150,7 +146,7 @@ int GetOrFlagPlayerBracket(Player* player)
                 if (member && member->IsInWorld() && !IsBracketPlayerBot(member))
                 {
                     if (g_BotDistFullDebugMode)
-                        LOG_INFO("server.loading",
+                        LOG_INFO("server.world",
                                  "[BotLevelBrackets] GetOrFlagPlayerBracket: Bot {} (Level {}) is in group with real player {} - excluded.",
                                  player->GetName(), player->GetLevel(), member->GetName());
                     return -1;
@@ -194,7 +190,10 @@ int GetOrFlagPlayerBracket(Player* player)
     }
 
     if (targetRange >= 0)
-        EnqueuePendingReset(player->GetGUID(), targetRange, factionRanges);
+    {
+        if (g_PendingLevelResets.count(player->GetGUID()) == 0)
+            EnqueuePendingReset(player->GetGUID(), targetRange, factionRanges);
+    }
 
     return -1;
 }
@@ -282,7 +281,7 @@ static void ApplyDynamicWeights(
     if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
     {
         for (int i = 0; i < g_NumRanges; ++i)
-            LOG_INFO("server.loading",
+            LOG_INFO("server.world",
                      "[BotLevelBrackets] Dynamic Range {}: {}-{}, Alliance Desired: {}%, Horde Desired: {}%",
                      i + 1, g_AllianceLevelRanges[i].lower, g_AllianceLevelRanges[i].upper,
                      g_AllianceLevelRanges[i].desiredPercent, g_HordeLevelRanges[i].desiredPercent);
@@ -309,7 +308,7 @@ static void RedistributeFaction(
     {
         desiredCounts[i] = static_cast<int>(round((factionRanges[i].desiredPercent / 100.0) * totalBots));
         if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] {} Range {} ({}-{}): Desired = {}, Actual = {}.",
+            LOG_INFO("server.world", "[BotLevelBrackets] {} Range {} ({}-{}): Desired = {}, Actual = {}.",
                      factionLabel, i + 1, factionRanges[i].lower, factionRanges[i].upper,
                      desiredCounts[i], actualCounts[i]);
     }
@@ -339,14 +338,16 @@ static void RedistributeFaction(
                 if (actualCounts[targetRange] >= desiredCounts[targetRange])
                 { targetIdx++; continue; }
 
-                EnqueuePendingReset(bot->GetGUID(), targetRange, factionRanges.data());
-                if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.loading", "[BotLevelBrackets] {} {}bot '{}' enqueued for range {}-{}.",
-                             factionLabel, batchLabel,
-                             bot->GetName(), factionRanges[targetRange].lower, factionRanges[targetRange].upper);
+                if (EnqueuePendingReset(bot->GetGUID(), targetRange, factionRanges.data()))
+                {
+                    if (g_BotDistFullDebugMode)
+                        LOG_INFO("server.world", "[BotLevelBrackets] {} {}bot '{}' enqueued for range {}-{}.",
+                                 factionLabel, batchLabel,
+                                 bot->GetName(), factionRanges[targetRange].lower, factionRanges[targetRange].upper);
 
-                actualCounts[i]--;
-                actualCounts[targetRange]++;
+                    actualCounts[i]--;
+                    actualCounts[targetRange]++;
+                }
                 if (actualCounts[targetRange] >= desiredCounts[targetRange])
                     targetIdx++;
             }
@@ -376,7 +377,7 @@ void RunDistributionCycle(ChatHandler* handler)
     std::vector<std::vector<Player*>> hordeBotsByRange(g_NumRanges);
 
     if (g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] Starting processing of {} players.", allPlayers.size());
+        LOG_INFO("server.world", "[BotLevelBrackets] Starting processing of {} players.", allPlayers.size());
 
     for (auto const& itr : allPlayers)
     {
@@ -396,6 +397,13 @@ void RunDistributionCycle(ChatHandler* handler)
 
         if (IsAlliancePlayerBot(player))
         {
+            if (IsBotInProtectedDuelZone(player))
+            {
+                if (g_BotDistFullDebugMode)
+                    LOG_INFO("server.world", "[BotLevelBrackets] Alliance bot '{}' in protected duel zone, excluded from distribution.",
+                             player->GetName());
+                continue;
+            }
             totalAllianceBots++;
             int rangeIndex = GetOrFlagPlayerBracket(player);
             if (rangeIndex >= 0)
@@ -403,15 +411,22 @@ void RunDistributionCycle(ChatHandler* handler)
                 allianceActualCounts[rangeIndex]++;
                 allianceBotsByRange[rangeIndex].push_back(player);
                 if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.loading", "[BotLevelBrackets] Alliance bot '{}' with level {} added to range {}.",
+                    LOG_INFO("server.world", "[BotLevelBrackets] Alliance bot '{}' with level {} added to range {}.",
                              player->GetName(), player->GetLevel(), rangeIndex + 1);
             }
             else if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading", "[BotLevelBrackets] Alliance bot '{}' with level {} does not fall into any defined range.",
+                LOG_INFO("server.world", "[BotLevelBrackets] Alliance bot '{}' with level {} does not fall into any defined range.",
                          player->GetName(), player->GetLevel());
         }
         else if (IsHordePlayerBot(player))
         {
+            if (IsBotInProtectedDuelZone(player))
+            {
+                if (g_BotDistFullDebugMode)
+                    LOG_INFO("server.world", "[BotLevelBrackets] Horde bot '{}' in protected duel zone, excluded from distribution.",
+                             player->GetName());
+                continue;
+            }
             totalHordeBots++;
             int rangeIndex = GetOrFlagPlayerBracket(player);
             if (rangeIndex >= 0)
@@ -419,19 +434,19 @@ void RunDistributionCycle(ChatHandler* handler)
                 hordeActualCounts[rangeIndex]++;
                 hordeBotsByRange[rangeIndex].push_back(player);
                 if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.loading", "[BotLevelBrackets] Horde bot '{}' with level {} added to range {}.",
+                    LOG_INFO("server.world", "[BotLevelBrackets] Horde bot '{}' with level {} added to range {}.",
                              player->GetName(), player->GetLevel(), rangeIndex + 1);
             }
             else if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading", "[BotLevelBrackets] Horde bot '{}' with level {} does not fall into any defined range.",
+                LOG_INFO("server.world", "[BotLevelBrackets] Horde bot '{}' with level {} does not fall into any defined range.",
                          player->GetName(), player->GetLevel());
         }
     }
 
     if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
     {
-        LOG_INFO("server.loading", "[BotLevelBrackets] Total Alliance Bots: {}.", totalAllianceBots);
-        LOG_INFO("server.loading", "[BotLevelBrackets] Total Horde Bots: {}.",    totalHordeBots);
+        LOG_INFO("server.world", "[BotLevelBrackets] Total Alliance Bots: {}.", totalAllianceBots);
+        LOG_INFO("server.world", "[BotLevelBrackets] Total Horde Bots: {}.",    totalHordeBots);
     }
 
     RedistributeFaction(totalAllianceBots, allianceActualCounts, allianceBotsByRange, g_AllianceLevelRanges, "Alliance");
@@ -439,7 +454,7 @@ void RunDistributionCycle(ChatHandler* handler)
 
     if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
     {
-        LOG_INFO("server.loading",
+        LOG_INFO("server.world",
                  "[BotLevelBrackets] Distribution cycle complete. Alliance: {}, Horde: {}, Pending: {}.",
                  totalAllianceBots, totalHordeBots, g_PendingLevelResets.size());
     }

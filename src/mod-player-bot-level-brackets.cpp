@@ -65,7 +65,7 @@ public:
         if (m_flaggedTimer >= g_BotDistFlaggedCheckFrequency * 1000)
         {
             if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading", "[BotLevelBrackets] Pending Level Resets Triggering.");
+                LOG_INFO("server.world", "[BotLevelBrackets] Pending Level Resets Triggering.");
             ProcessPendingLevelResets();
             m_flaggedTimer = 0;
         }
@@ -97,7 +97,7 @@ public:
         if (m_guildTrackerTimer >= g_GuildTrackerUpdateFrequency * 1000)
         {
             if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading", "[BotLevelBrackets] Guild Tracker Update Triggering.");
+                LOG_INFO("server.world", "[BotLevelBrackets] Guild Tracker Update Triggering.");
             UpdatePersistentGuildTracker();
             m_guildTrackerTimer = 0;
         }
@@ -159,7 +159,7 @@ public:
             guildId);
 
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading",
+            LOG_INFO("server.world",
                      "[BotLevelBrackets] Player '{}' logged in - guild {} marked as having real players.",
                      player->GetName(), guildId);
     }
@@ -189,7 +189,7 @@ public:
             guildId);
 
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading",
+            LOG_INFO("server.world",
                      "[BotLevelBrackets] Real player '{}' joined guild {} - guild marked as having real players.",
                      player->GetName(), guildId);
     }
@@ -221,7 +221,7 @@ public:
         {
             g_RealPlayerGuildIds.erase(guildId);
             if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading",
+                LOG_INFO("server.world",
                          "[BotLevelBrackets] Real player '{}' left guild {} with no other online real players - "
                          "removed from online cache. Persistent tracker updated by timer.",
                          player->GetName(), guildId);

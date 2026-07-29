@@ -47,7 +47,7 @@ bool BotInFriendList(Player* bot)
         return false;
     bool found = g_SocialFriendsList.count(bot->GetGUID().GetRawValue()) > 0;
     if (found && g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} (Level {}) is on a Real Player's friends list",
+        LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is on a Real Player's friends list",
                  bot->GetName(), bot->GetLevel());
     return found;
 }
@@ -67,44 +67,44 @@ bool IsBotSafeForLevelReset(Player* bot)
     if (!bot || !bot->GetSession() || bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
     {
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Null or invalid bot pointer.");
+            LOG_INFO("server.world", "[BotLevelBrackets] Null or invalid bot pointer.");
         return false;
     }
     if (IsBotInProtectedDuelZone(bot))
     {
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} (Level {}) is in a protected duel zone (zone {}). Skipping.",
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is in a protected duel zone (zone {}). Skipping.",
                      bot->GetName(), bot->GetLevel(), bot->GetZoneId());
         return false;
     }
     if (!bot->IsInWorld())
     {
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} (Level {}) is not in world.", bot->GetName(), bot->GetLevel());
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is not in world.", bot->GetName(), bot->GetLevel());
         return false;
     }
     if (!bot->IsAlive())
     {
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} (Level {}) is not alive.", bot->GetName(), bot->GetLevel());
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is not alive.", bot->GetName(), bot->GetLevel());
         return false;
     }
     if (bot->IsInCombat())
     {
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} (Level {}) is in combat.", bot->GetName(), bot->GetLevel());
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is in combat.", bot->GetName(), bot->GetLevel());
         return false;
     }
     if (bot->InBattleground() || bot->InArena() || bot->inRandomLfgDungeon() || bot->InBattlegroundQueue())
     {
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} (Level {}) is in BG/arena/dungeon/queue.", bot->GetName(), bot->GetLevel());
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is in BG/arena/dungeon/queue.", bot->GetName(), bot->GetLevel());
         return false;
     }
     if (bot->IsInFlight())
     {
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} (Level {}) is in flight.", bot->GetName(), bot->GetLevel());
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is in flight.", bot->GetName(), bot->GetLevel());
         return false;
     }
     if (Group* group = bot->GetGroup())
@@ -115,7 +115,7 @@ bool IsBotSafeForLevelReset(Player* bot)
             if (member && member->IsInWorld() && !IsBracketPlayerBot(member))
             {
                 if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.loading", "[BotLevelBrackets] Bot {} has non-bot group member {}.", bot->GetName(), member->GetName());
+                    LOG_INFO("server.world", "[BotLevelBrackets] Bot {} has non-bot group member {}.", bot->GetName(), member->GetName());
                 return false;
             }
         }

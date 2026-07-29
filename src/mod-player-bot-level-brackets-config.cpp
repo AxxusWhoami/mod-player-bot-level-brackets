@@ -33,6 +33,17 @@ void ClampAndBalanceBrackets()
         if (g_BotDistFullDebugMode)
             LOG_INFO("server.loading", "[BotLevelBrackets] {} pct sum is {} (expected 100). Auto adjusting.", factionLabel, total);
         int missing = 100 - static_cast<int>(total);
+        bool anyAdjustable = false;
+        for (uint8 i = 0; i < g_NumRanges; ++i)
+            if (ranges[i].lower <= ranges[i].upper && ranges[i].desiredPercent > 0)
+            { anyAdjustable = true; break; }
+        if (!anyAdjustable)
+        {
+            LOG_ERROR("server.loading",
+                      "[BotLevelBrackets] {} pct sum is {} but no range has desiredPercent > 0 with valid bounds. "
+                      "Cannot auto-balance. Check your configuration.", factionLabel, total);
+            return;
+        }
         while (missing > 0)
             for (uint8 i = 0; i < g_NumRanges && missing > 0; ++i)
                 if (ranges[i].lower <= ranges[i].upper && ranges[i].desiredPercent > 0)
@@ -172,6 +183,8 @@ void LoadBotLevelBracketsConfig()
     }
 
     ClampAndBalanceBrackets();
+
+    ++g_ConfigGeneration;
 
     // --- Zero-sum warning (after clamping) ---
     uint32 totalAlliance = 0, totalHorde = 0;

@@ -72,6 +72,7 @@ struct PendingTeleportEntry
 extern uint8  g_NumRanges;
 extern uint8  g_RandomBotMinLevel;
 extern uint8  g_RandomBotMaxLevel;
+extern uint32 g_ConfigGeneration;
 
 extern bool   g_BotLevelBracketsEnabled;
 extern bool   g_IgnoreGuildBotsWithRealPlayers;
@@ -140,7 +141,7 @@ void CleanupGuildTracker();
 
 // --- queue ---
 void RemoveBotFromPendingResets(Player* bot);
-void EnqueuePendingReset(ObjectGuid guid, int targetRange, const LevelRangeConfig* factionRanges);
+bool EnqueuePendingReset(ObjectGuid guid, int targetRange, const LevelRangeConfig* factionRanges);
 void ProcessPendingLevelResets();
 
 // --- distribution ---
@@ -151,8 +152,8 @@ int   GetOrFlagPlayerBracket(Player* player);
 
 // --- teleport ---
 void  TeleportBotToLevelZone(Player* bot, uint8 newLevel, uint8 teamID);
-void  EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID);
-void  EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, float z, float o);
+bool  EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID);
+bool  EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, float z, float o);
 void  ProcessPendingTeleports();
 void  RemoveBotFromPendingTeleports(Player* bot);
 void  ProcessHubPopulate();

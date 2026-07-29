@@ -29,7 +29,7 @@ void LoadSocialFriendList()
         return;
 
     if (g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] Fetching Social Friend List GUIDs into set");
+        LOG_INFO("server.world", "[BotLevelBrackets] Fetching Social Friend List GUIDs into set");
 
     do
     {
@@ -93,7 +93,7 @@ void LoadPersistentGuildTracker()
 void UpdatePersistentGuildTracker()
 {
     if (g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] Starting additive-only persistent guild tracker update...");
+        LOG_INFO("server.world", "[BotLevelBrackets] Starting additive-only persistent guild tracker update...");
 
     std::unordered_set<uint32> currentRealPlayerGuilds = CollectCurrentRealPlayerGuildIds();
 
@@ -113,7 +113,7 @@ void UpdatePersistentGuildTracker()
 
     if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
     {
-        LOG_INFO("server.loading",
+        LOG_INFO("server.world",
                  "[BotLevelBrackets] Additive guild tracker update complete. {} new guild(s) persisted, {} total tracked.",
                  processedCount, g_PersistentRealPlayerGuildIds.size());
     }
@@ -123,7 +123,7 @@ void UpdatePersistentGuildTracker()
 void CleanupGuildTracker()
 {
     if (g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] Starting guild tracker cleanup...");
+        LOG_INFO("server.world", "[BotLevelBrackets] Starting guild tracker cleanup...");
 
     std::unordered_set<uint32> currentRealPlayerGuilds = CollectCurrentRealPlayerGuildIds();
 
@@ -143,12 +143,12 @@ void CleanupGuildTracker()
         removedCount++;
 
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading", "[BotLevelBrackets] Removed guild {} from tracker.", guildId);
+            LOG_INFO("server.world", "[BotLevelBrackets] Removed guild {} from tracker.", guildId);
     }
 
     if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
     {
-        LOG_INFO("server.loading", "[BotLevelBrackets] Guild tracker cleanup: {} removed, {} remain.",
+        LOG_INFO("server.world", "[BotLevelBrackets] Guild tracker cleanup: {} removed, {} remain.",
                  removedCount, g_PersistentRealPlayerGuildIds.size());
     }
 }

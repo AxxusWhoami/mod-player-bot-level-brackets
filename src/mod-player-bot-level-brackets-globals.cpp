@@ -3,6 +3,7 @@
 uint8  g_NumRanges                   = 9;
 uint8  g_RandomBotMinLevel           = 1;
 uint8  g_RandomBotMaxLevel           = 80;
+uint32 g_ConfigGeneration            = 0;
 
 bool   g_BotLevelBracketsEnabled     = true;
 bool   g_IgnoreGuildBotsWithRealPlayers = true;

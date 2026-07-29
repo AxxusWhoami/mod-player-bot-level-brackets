@@ -1,6 +1,5 @@
 #include "mod-player-bot-level-brackets-internal.h"
 #include <cmath>
-#include <cstdlib>
 
 struct TeleportDestination
 {
@@ -72,17 +71,26 @@ void TeleportBotToLevelZone(Player* bot, uint8 newLevel, uint8 teamID)
     if (g_BotDistFullDebugMode)
     {
         std::string faction = (teamID == TEAM_ALLIANCE) ? "Alliance" : "Horde";
-        LOG_INFO("server.loading",
+        LOG_INFO("server.world",
                  "[BotLevelBrackets] TeleportBotToLevelZone: {} bot '{}' teleported to level zone for range {} (map {}, {:.1f}, {:.1f}, {:.1f}).",
                  faction, bot->GetName(), rangeIndex + 1, dest.mapId, dest.x, dest.y, dest.z);
     }
 }
 
 
-void EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID)
+bool EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID)
 {
     if (!bot)
-        return;
+        return false;
+
+    if (g_PendingTeleports.count(bot->GetGUID()) > 0)
+    {
+        if (g_BotDistFullDebugMode)
+            LOG_INFO("server.world",
+                     "[BotLevelBrackets] EnqueuePendingTeleport: bot '{}' already has a pending teleport, skipping.",
+                     bot->GetName());
+        return false;
+    }
 
     PendingTeleportEntry entry;
     entry.botGuid     = bot->GetGUID();
@@ -93,15 +101,25 @@ void EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID)
     g_PendingTeleports[bot->GetGUID()] = std::move(entry);
 
     if (g_BotDistFullDebugMode)
-        LOG_INFO("server.loading",
+        LOG_INFO("server.world",
                  "[BotLevelBrackets] EnqueuePendingTeleport: bot '{}' enqueued for teleport to level {} zone.",
                  bot->GetName(), newLevel);
+    return true;
 }
 
-void EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, float z, float o)
+bool EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, float z, float o)
 {
     if (!bot)
-        return;
+        return false;
+
+    if (g_PendingTeleports.count(bot->GetGUID()) > 0)
+    {
+        if (g_BotDistFullDebugMode)
+            LOG_INFO("server.world",
+                     "[BotLevelBrackets] EnqueuePendingHubTeleport: bot '{}' already has a pending teleport, skipping.",
+                     bot->GetName());
+        return false;
+    }
 
     PendingTeleportEntry entry;
     entry.botGuid     = bot->GetGUID();
@@ -117,9 +135,10 @@ void EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, floa
     g_PendingTeleports[bot->GetGUID()] = std::move(entry);
 
     if (g_BotDistFullDebugMode)
-        LOG_INFO("server.loading",
+        LOG_INFO("server.world",
                  "[BotLevelBrackets] EnqueuePendingHubTeleport: bot '{}' enqueued for teleport to hub (map {}, {:.1f}, {:.1f}, {:.1f}).",
                  bot->GetName(), mapId, x, y, z);
+    return true;
 }
 
 
@@ -161,13 +180,13 @@ void ProcessPendingTeleports()
         // so we don't accumulate stale entries forever.
         if (!IsBotSafeForLevelReset(bot))
         {
-            if (g_PendingQueueTTL > 0 &&
-                (static_cast<uint32>(time(nullptr)) - it->second.enqueuedAt) > g_PendingQueueTTL)
+            uint32 effectiveTTL = (g_PendingQueueTTL > 0) ? g_PendingQueueTTL : 3600;
+            if ((static_cast<uint32>(time(nullptr)) - it->second.enqueuedAt) > effectiveTTL)
             {
                 if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.loading",
+                    LOG_INFO("server.world",
                              "[BotLevelBrackets] ProcessPendingTeleports: bot '{}' expired (TTL {}s), removing from queue.",
-                             bot->GetName(), g_PendingQueueTTL);
+                             bot->GetName(), effectiveTTL);
                 it = g_PendingTeleports.erase(it);
             }
             else
@@ -184,7 +203,7 @@ void ProcessPendingTeleports()
             bot->TeleportTo(it->second.destMapId, it->second.destX, it->second.destY, it->second.destZ, it->second.destO);
 
             if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading",
+                LOG_INFO("server.world",
                          "[BotLevelBrackets] ProcessPendingTeleports: bot '{}' teleported to hub (map {}, {:.1f}, {:.1f}, {:.1f}).",
                          bot->GetName(), it->second.destMapId, it->second.destX, it->second.destY, it->second.destZ);
         }
@@ -460,7 +479,7 @@ void ProcessHubPopulate()
             ++processed;
 
             if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading",
+                LOG_INFO("server.world",
                          "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) wrong-level for hub {}, dispersed to leveling zone.",
                          info->bot->GetName(), level, hubIdx);
         }
@@ -502,7 +521,7 @@ void ProcessHubPopulate()
             --toDisperse;
 
             if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading",
+                LOG_INFO("server.world",
                          "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) excess in hub {}, dispersed to leveling zone.",
                          info->bot->GetName(), level, hubIdx);
         }
@@ -545,8 +564,8 @@ void ProcessHubPopulate()
             if (!IsBotSafeForLevelReset(info.bot))
                 continue;
 
-            float angle  = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 2.0f * static_cast<float>(M_PI);
-            float offset = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 30.0f;
+            float angle  = static_cast<float>(rand_norm()) * 2.0f * static_cast<float>(M_PI);
+            float offset = static_cast<float>(rand_norm()) * 30.0f;
             float dx = hub.cx + cosf(angle) * offset;
             float dy = hub.cy + sinf(angle) * offset;
 
@@ -556,14 +575,14 @@ void ProcessHubPopulate()
             --needed;
 
             if (g_BotDistFullDebugMode)
-                LOG_INFO("server.loading",
+                LOG_INFO("server.world",
                          "[BotLevelBrackets] HubPopulate: bot '{}' (level {}) pulled INTO hub {} ({}/{}).",
                          info.bot->GetName(), info.bot->GetLevel(), hubIdx, quota - needed, quota);
         }
     }
 
     if (processed > 0 && g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] HubPopulate: processed {} bots this cycle.", processed);
+        LOG_INFO("server.world", "[BotLevelBrackets] HubPopulate: processed {} bots this cycle.", processed);
 }
 
 
@@ -619,7 +638,7 @@ void ProcessStartingZoneDisperse()
                 ++processed;
 
                 if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.loading",
+                    LOG_INFO("server.world",
                              "[BotLevelBrackets] StartingZoneDisperse: bot '{}' (level {}) dispersed from starting area {} to leveling zone.",
                              bot->GetName(), level, i);
             }
@@ -628,7 +647,7 @@ void ProcessStartingZoneDisperse()
     }
 
     if (processed > 0 && g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] StartingZoneDisperse: processed {} bots this cycle.", processed);
+        LOG_INFO("server.world", "[BotLevelBrackets] StartingZoneDisperse: processed {} bots this cycle.", processed);
 }
 
 
@@ -680,11 +699,11 @@ void ProcessWrongMapDisperse()
         ++processed;
 
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.loading",
+            LOG_INFO("server.world",
                      "[BotLevelBrackets] WrongMapDisperse: bot '{}' (level {}) on wrong map {} dispersed to leveling zone.",
                      bot->GetName(), level, bot->GetMapId());
     }
 
     if (processed > 0 && g_BotDistFullDebugMode)
-        LOG_INFO("server.loading", "[BotLevelBrackets] WrongMapDisperse: processed {} bots this cycle.", processed);
+        LOG_INFO("server.world", "[BotLevelBrackets] WrongMapDisperse: processed {} bots this cycle.", processed);
 }
