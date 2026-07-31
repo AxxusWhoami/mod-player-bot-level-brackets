@@ -49,3 +49,4 @@ local.properties
 .vscode/
 .vsconfig/
 .env
+.bolt
