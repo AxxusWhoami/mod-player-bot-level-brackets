@@ -44,10 +44,21 @@ void ClampAndBalanceBrackets()
                       "Cannot auto-balance. Check your configuration.", factionLabel, total);
             return;
         }
-        while (missing > 0)
-            for (uint8 i = 0; i < g_NumRanges && missing > 0; ++i)
-                if (ranges[i].lower <= ranges[i].upper && ranges[i].desiredPercent > 0)
-                { ranges[i].desiredPercent++; missing--; }
+        if (missing > 0)
+        {
+            while (missing > 0)
+                for (uint8 i = 0; i < g_NumRanges && missing > 0; ++i)
+                    if (ranges[i].lower <= ranges[i].upper && ranges[i].desiredPercent > 0)
+                    { ranges[i].desiredPercent++; missing--; }
+        }
+        else
+        {
+            // total > 100: reduce from the highest-percent ranges first
+            while (missing < 0)
+                for (int8 i = static_cast<int8>(g_NumRanges) - 1; i >= 0 && missing < 0; --i)
+                    if (ranges[i].lower <= ranges[i].upper && ranges[i].desiredPercent > 1)
+                    { ranges[i].desiredPercent--; missing++; }
+        }
     };
     balanceRanges(g_AllianceLevelRanges, "Alliance");
     balanceRanges(g_HordeLevelRanges, "Horde");
@@ -173,11 +184,12 @@ void LoadBotLevelBracketsConfig()
                 g_AllianceLevelRanges[i].upper != g_HordeLevelRanges[i].upper)
             {
                 LOG_ERROR("server.loading",
-                          "[BotLevelBrackets] FATAL: Bracket mismatch at index {} when SyncFactions is enabled. "
-                          "Alliance: {}-{}, Horde: {}-{}. Both must match exactly.",
+                          "[BotLevelBrackets] Bracket mismatch at index {} when SyncFactions is enabled. "
+                          "Alliance: {}-{}, Horde: {}-{}. Both must match exactly. Disabling module.",
                           i, g_AllianceLevelRanges[i].lower, g_AllianceLevelRanges[i].upper,
                           g_HordeLevelRanges[i].lower, g_HordeLevelRanges[i].upper);
-                std::terminate();
+                g_BotLevelBracketsEnabled = false;
+                return;
             }
         }
     }

@@ -2,11 +2,12 @@
 
 void RemoveBotFromPendingResets(Player* bot)
 {
-    g_PendingLevelResets.erase(bot->GetGUID());
+    if (bot)
+        g_PendingLevelResets.erase(bot->GetGUID());
 }
 
 
-bool EnqueuePendingReset(ObjectGuid guid, int targetRange, const LevelRangeConfig* factionRanges)
+bool EnqueuePendingReset(ObjectGuid guid, int targetRange, bool isAlliance)
 {
     if (g_MaxPendingQueueSize > 0 && g_PendingLevelResets.size() >= g_MaxPendingQueueSize)
     {
@@ -19,7 +20,7 @@ bool EnqueuePendingReset(ObjectGuid guid, int targetRange, const LevelRangeConfi
         return false;
     }
     uint32 now = static_cast<uint32>(time(nullptr));
-    auto result = g_PendingLevelResets.emplace(guid, PendingResetEntry{guid, targetRange, factionRanges, now});
+    auto result = g_PendingLevelResets.emplace(guid, PendingResetEntry{guid, targetRange, isAlliance, now});
     if (!result.second)
     {
         if (g_BotDistFullDebugMode)
@@ -84,7 +85,16 @@ void ProcessPendingLevelResets()
             continue;
         }
 
-        int targetRange = it->second.targetRange;
+        int  targetRange   = it->second.targetRange;
+        const LevelRangeConfig* factionRanges = it->second.isAlliance
+            ? g_AllianceLevelRanges.data()
+            : g_HordeLevelRanges.data();
+
+        if (targetRange < 0 || targetRange >= g_NumRanges)
+        {
+            it = g_PendingLevelResets.erase(it);
+            continue;
+        }
 
         if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot))
         {
@@ -106,13 +116,13 @@ void ProcessPendingLevelResets()
 
         if (IsBotSafeForLevelReset(bot))
         {
-            AdjustBotToRange(bot, targetRange, it->second.factionRanges);
+            AdjustBotToRange(bot, targetRange, factionRanges);
             if (g_BotDistFullDebugMode)
             {
                 LOG_INFO("server.world", "[BotLevelBrackets] Bot '{}' successfully reset to level range {}-{}.",
                          bot->GetName(),
-                         it->second.factionRanges[targetRange].lower,
-                         it->second.factionRanges[targetRange].upper);
+                         factionRanges[targetRange].lower,
+                         factionRanges[targetRange].upper);
             }
             it = g_PendingLevelResets.erase(it);
             ++processed;

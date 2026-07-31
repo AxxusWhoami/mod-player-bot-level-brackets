@@ -36,7 +36,7 @@ void LoadSocialFriendList()
         uint32 socialFriendGUID = result->Fetch()->Get<uint32>();
         g_SocialFriendsList.insert(static_cast<uint64>(socialFriendGUID));
         if (g_BotDistFullDebugMode)
-            LOG_INFO("server.load", "[BotLevelBrackets] Adding GUID {} to Social Friend List", socialFriendGUID);
+            LOG_INFO("server.world", "[BotLevelBrackets] Adding GUID {} to Social Friend List", socialFriendGUID);
     } while (result->NextRow());
 }
 

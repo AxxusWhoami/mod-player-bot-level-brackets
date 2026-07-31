@@ -46,10 +46,10 @@ struct LevelRangeConfig
 /// An entry in the pending level reset queue.
 struct PendingResetEntry
 {
-    ObjectGuid              botGuid;
-    int                     targetRange;
-    const LevelRangeConfig* factionRanges;
-    uint32                  enqueuedAt; ///< Unix timestamp when the entry was added
+    ObjectGuid botGuid;
+    int        targetRange;
+    bool       isAlliance;  ///< true = Alliance ranges, false = Horde ranges
+    uint32     enqueuedAt;  ///< Unix timestamp when the entry was added
 };
 
 /// An entry in the pending teleport queue.
@@ -141,7 +141,7 @@ void CleanupGuildTracker();
 
 // --- queue ---
 void RemoveBotFromPendingResets(Player* bot);
-bool EnqueuePendingReset(ObjectGuid guid, int targetRange, const LevelRangeConfig* factionRanges);
+bool EnqueuePendingReset(ObjectGuid guid, int targetRange, bool isAlliance);
 void ProcessPendingLevelResets();
 
 // --- distribution ---

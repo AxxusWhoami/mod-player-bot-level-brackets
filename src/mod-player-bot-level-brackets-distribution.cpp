@@ -191,8 +191,9 @@ int GetOrFlagPlayerBracket(Player* player)
 
     if (targetRange >= 0)
     {
+        bool isAlliance = IsAlliancePlayerBot(player);
         if (g_PendingLevelResets.count(player->GetGUID()) == 0)
-            EnqueuePendingReset(player->GetGUID(), targetRange, factionRanges);
+            EnqueuePendingReset(player->GetGUID(), targetRange, isAlliance);
     }
 
     return -1;
@@ -269,9 +270,10 @@ static void ApplyDynamicWeights(
             pctSum += pct;
         }
         int missing = 100 - pctSum;
-        for (int i = 0; i < g_NumRanges && missing > 0; ++i)
-            if (ranges[i].lower <= ranges[i].upper && ranges[i].desiredPercent > 0)
-            { ranges[i].desiredPercent++; missing--; }
+        while (missing > 0)
+            for (int i = 0; i < g_NumRanges && missing > 0; ++i)
+                if (ranges[i].lower <= ranges[i].upper && ranges[i].desiredPercent > 0)
+                { ranges[i].desiredPercent++; missing--; }
     };
 
     normaliseWeights(g_AllianceLevelRanges, allianceWeights);
@@ -298,7 +300,8 @@ static void RedistributeFaction(
     std::vector<int>&                         actualCounts,
     std::vector<std::vector<Player*>>&        botsByRange,
     std::vector<LevelRangeConfig>&            factionRanges,
-    const char*                               factionLabel)
+    const char*                               factionLabel,
+    bool                                      isAlliance)
 {
     if (totalBots == 0)
         return;
@@ -338,7 +341,7 @@ static void RedistributeFaction(
                 if (actualCounts[targetRange] >= desiredCounts[targetRange])
                 { targetIdx++; continue; }
 
-                if (EnqueuePendingReset(bot->GetGUID(), targetRange, factionRanges.data()))
+                if (EnqueuePendingReset(bot->GetGUID(), targetRange, isAlliance))
                 {
                     if (g_BotDistFullDebugMode)
                         LOG_INFO("server.world", "[BotLevelBrackets] {} {}bot '{}' enqueued for range {}-{}.",
@@ -449,8 +452,8 @@ void RunDistributionCycle(ChatHandler* handler)
         LOG_INFO("server.world", "[BotLevelBrackets] Total Horde Bots: {}.",    totalHordeBots);
     }
 
-    RedistributeFaction(totalAllianceBots, allianceActualCounts, allianceBotsByRange, g_AllianceLevelRanges, "Alliance");
-    RedistributeFaction(totalHordeBots,    hordeActualCounts,    hordeBotsByRange,    g_HordeLevelRanges,    "Horde");
+    RedistributeFaction(totalAllianceBots, allianceActualCounts, allianceBotsByRange, g_AllianceLevelRanges, "Alliance", true);
+    RedistributeFaction(totalHordeBots,    hordeActualCounts,    hordeBotsByRange,    g_HordeLevelRanges,    "Horde",    false);
 
     if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
     {
