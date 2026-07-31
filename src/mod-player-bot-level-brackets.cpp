@@ -19,6 +19,7 @@ public:
         LoadBotLevelBracketsConfig();
         LoadSocialFriendList();
         LoadPersistentGuildTracker();
+        LoadPendingResetsFromDB();
 
         if (!g_BotLevelBracketsEnabled)
         {

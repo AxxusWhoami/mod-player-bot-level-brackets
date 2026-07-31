@@ -29,6 +29,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <mutex>
+#include <atomic>
 #include <utility>
 #include <vector>
 
@@ -145,6 +146,10 @@ void CleanupGuildTracker();
 void RemoveBotFromPendingResets(Player* bot);
 bool EnqueuePendingReset(ObjectGuid guid, int targetRange, bool isAlliance);
 void ProcessPendingLevelResets();
+void LoadPendingResetsFromDB();
+
+// --- distribution re-entry guard ---
+extern std::atomic<bool> g_DistributionInProgress;
 
 // --- distribution ---
 int   GetLevelRangeIndex(uint8 level, uint8 teamID);

@@ -31,110 +31,155 @@ bool EnqueuePendingReset(ObjectGuid guid, int targetRange, bool isAlliance)
             LOG_INFO("server.world", "[BotLevelBrackets] Bot {} already in pending queue, skipping.", guid.ToString());
         return false;
     }
+    CharacterDatabase.Execute(
+        "REPLACE INTO bot_level_brackets_pending_resets (bot_guid, target_range, is_alliance, enqueued_at) VALUES ({}, {}, {}, {})",
+        guid.GetRawValue(), targetRange, isAlliance ? 1 : 0, now);
     return true;
+}
+
+
+static void DeletePendingFromDB(ObjectGuid guid)
+{
+    CharacterDatabase.Execute(
+        "DELETE FROM bot_level_brackets_pending_resets WHERE bot_guid = {}",
+        guid.GetRawValue());
 }
 
 
 void ProcessPendingLevelResets()
 {
-    std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
-    if (g_BotDistFullDebugMode)
-        LOG_INFO("server.world", "[BotLevelBrackets] Processing {} pending resets...", g_PendingLevelResets.size());
+    struct ProcessCandidate {
+        ObjectGuid guid;
+        int        targetRange;
+        bool       isAlliance;
+    };
 
-    if (g_PendingLevelResets.empty())
-        return;
+    std::vector<ProcessCandidate> candidates;
 
-    uint32 now = static_cast<uint32>(time(nullptr));
-    uint32 processed = 0;
-
-    for (auto it = g_PendingLevelResets.begin(); it != g_PendingLevelResets.end(); )
+    // Phase 1: under lock, validate and collect candidates; drop invalid entries.
     {
-        if (g_FlaggedProcessLimit > 0 && processed >= g_FlaggedProcessLimit)
-            break;
+        std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
+        if (g_BotDistFullDebugMode)
+            LOG_INFO("server.world", "[BotLevelBrackets] Processing {} pending resets...", g_PendingLevelResets.size());
 
-        // TTL check: use configured TTL, or fallback to 1 hour if TTL is 0 (disabled)
-        // to prevent perpetual queue entries from bots stuck in combat, BG, etc.
-        uint32 effectiveTTL = (g_PendingQueueTTL > 0) ? g_PendingQueueTTL : 3600;
-        if ((now - it->second.enqueuedAt) > effectiveTTL)
+        if (g_PendingLevelResets.empty())
+            return;
+
+        uint32 now = static_cast<uint32>(time(nullptr));
+
+        for (auto it = g_PendingLevelResets.begin(); it != g_PendingLevelResets.end(); )
         {
-            if (g_BotDistFullDebugMode)
-                LOG_INFO("server.world", "[BotLevelBrackets] Pending entry for {} expired (TTL {}s). Dropping.",
-                         it->first.ToString(), effectiveTTL);
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
+            if (g_FlaggedProcessLimit > 0 && candidates.size() >= g_FlaggedProcessLimit)
+                break;
 
-        Player* bot = ObjectAccessor::FindPlayer(it->second.botGuid);
-
-        if (!bot)
-        {
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
-
-        if (!bot->IsInWorld() || !bot->GetSession() || bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
-        {
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
-
-        if (IsBotExcluded(bot))
-        {
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
-
-        if (IsBotInProtectedDuelZone(bot))
-        {
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
-
-        int  targetRange   = it->second.targetRange;
-        const LevelRangeConfig* factionRanges = it->second.isAlliance
-            ? g_AllianceLevelRanges.data()
-            : g_HordeLevelRanges.data();
-
-        if (targetRange < 0 || targetRange >= g_NumRanges)
-        {
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
-
-        if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot))
-        {
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
-
-        if (g_IgnoreFriendListed && BotInFriendList(bot))
-        {
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
-
-        if (g_IgnoreArenaTeamBots && BotInArenaTeam(bot))
-        {
-            it = g_PendingLevelResets.erase(it);
-            continue;
-        }
-
-        if (IsBotSafeForLevelReset(bot))
-        {
-            AdjustBotToRange(bot, targetRange, factionRanges);
-            if (g_BotDistFullDebugMode)
+            uint32 effectiveTTL = (g_PendingQueueTTL > 0) ? g_PendingQueueTTL : 3600;
+            if ((now - it->second.enqueuedAt) > effectiveTTL)
             {
-                LOG_INFO("server.world", "[BotLevelBrackets] Bot '{}' successfully reset to level range {}-{}.",
-                         bot->GetName(),
-                         factionRanges[targetRange].lower,
-                         factionRanges[targetRange].upper);
+                if (g_BotDistFullDebugMode)
+                    LOG_INFO("server.world", "[BotLevelBrackets] Pending entry for {} expired (TTL {}s). Dropping.",
+                             it->first.ToString(), effectiveTTL);
+                DeletePendingFromDB(it->first);
+                it = g_PendingLevelResets.erase(it);
+                continue;
             }
-            it = g_PendingLevelResets.erase(it);
-            ++processed;
-        }
-        else
-        {
+
+            Player* bot = ObjectAccessor::FindPlayer(it->second.botGuid);
+
+            if (!bot || !bot->IsInWorld() || !bot->GetSession() ||
+                bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
+            {
+                DeletePendingFromDB(it->first);
+                it = g_PendingLevelResets.erase(it);
+                continue;
+            }
+
+            if (IsBotExcluded(bot) || IsBotInProtectedDuelZone(bot))
+            {
+                DeletePendingFromDB(it->first);
+                it = g_PendingLevelResets.erase(it);
+                continue;
+            }
+
+            int targetRange = it->second.targetRange;
+            if (targetRange < 0 || targetRange >= g_NumRanges)
+            {
+                DeletePendingFromDB(it->first);
+                it = g_PendingLevelResets.erase(it);
+                continue;
+            }
+
+            if ((g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot)) ||
+                (g_IgnoreFriendListed && BotInFriendList(bot)) ||
+                (g_IgnoreArenaTeamBots && BotInArenaTeam(bot)))
+            {
+                DeletePendingFromDB(it->first);
+                it = g_PendingLevelResets.erase(it);
+                continue;
+            }
+
+            if (IsBotSafeForLevelReset(bot))
+                candidates.push_back({it->first, targetRange, it->second.isAlliance});
+
             ++it;
         }
     }
+
+    // Phase 2: mutex released — do the expensive level reset.
+    std::vector<ObjectGuid> processed;
+    for (auto& cand : candidates)
+    {
+        Player* bot = ObjectAccessor::FindPlayer(cand.guid);
+        if (!bot || !bot->IsInWorld() || !bot->GetSession() ||
+            bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
+            continue;
+
+        const LevelRangeConfig* factionRanges = cand.isAlliance
+            ? g_AllianceLevelRanges.data()
+            : g_HordeLevelRanges.data();
+
+        AdjustBotToRange(bot, cand.targetRange, factionRanges);
+        processed.push_back(cand.guid);
+
+        if (g_BotDistFullDebugMode)
+        {
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot '{}' successfully reset to level range {}-{}.",
+                     bot->GetName(),
+                     factionRanges[cand.targetRange].lower,
+                     factionRanges[cand.targetRange].upper);
+        }
+    }
+
+    // Phase 3: under lock, remove successfully processed entries.
+    if (!processed.empty())
+    {
+        std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
+        for (const auto& guid : processed)
+        {
+            g_PendingLevelResets.erase(guid);
+            DeletePendingFromDB(guid);
+        }
+    }
+}
+
+
+void LoadPendingResetsFromDB()
+{
+    auto result = CharacterDatabase.Query(
+        "SELECT bot_guid, target_range, is_alliance, enqueued_at FROM bot_level_brackets_pending_resets");
+    if (!result)
+        return;
+
+    std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
+    do
+    {
+        uint64 rawGuid = (*result)[0].Get<uint64>();
+        int    targetRange = (*result)[1].Get<int8_t>();
+        bool   isAlliance = (*result)[2].Get<uint8>() != 0;
+        uint32 enqueuedAt = (*result)[3].Get<uint32>();
+
+        ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(rawGuid);
+        g_PendingLevelResets.emplace(guid, PendingResetEntry{guid, targetRange, isAlliance, enqueuedAt});
+    } while (result->NextRow());
+
+    LOG_INFO("server.loading", "[BotLevelBrackets] Loaded {} pending resets from database.", g_PendingLevelResets.size());
 }

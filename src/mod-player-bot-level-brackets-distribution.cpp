@@ -363,6 +363,16 @@ static void RedistributeFaction(
 
 void RunDistributionCycle(ChatHandler* handler)
 {
+    bool expected = false;
+    if (!g_DistributionInProgress.compare_exchange_strong(expected, true))
+    {
+        if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
+            LOG_INFO("server.world", "[BotLevelBrackets] Distribution cycle already in progress, skipping.");
+        if (handler)
+            handler->SendSysMessage("[BotBrackets] Distribution cycle already in progress, skipping.");
+        return;
+    }
+
     const auto& allPlayers = ObjectAccessor::GetPlayers();
 
     LoadRealPlayerGuildIds(allPlayers);
@@ -466,4 +476,6 @@ void RunDistributionCycle(ChatHandler* handler)
         handler->PSendSysMessage("[BotBrackets] Alliance: {} bots  Horde: {} bots  Pending: {}",
                                  totalAllianceBots, totalHordeBots, [&]{ std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex); return g_PendingLevelResets.size(); }());
     }
+
+    g_DistributionInProgress.store(false);
 }
