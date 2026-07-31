@@ -327,7 +327,7 @@ public:
                                      hordeCounts[i]);
         }
 
-        handler->PSendSysMessage("[BotBrackets] Pending queue: {} entries.", g_PendingLevelResets.size());
+        handler->PSendSysMessage("[BotBrackets] Pending queue: {} entries.", [&]{ std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex); return g_PendingLevelResets.size(); }());
         return true;
     }
 
@@ -346,7 +346,18 @@ public:
 
     static bool HandlePending(ChatHandler* handler)
     {
-        size_t queueSize = g_PendingLevelResets.size();
+        size_t queueSize;
+        uint32 oldest = std::numeric_limits<uint32>::max();
+        uint32 newest = 0;
+        {
+            std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
+            queueSize = g_PendingLevelResets.size();
+            for (const auto& kv : g_PendingLevelResets)
+            {
+                if (kv.second.enqueuedAt < oldest) oldest = kv.second.enqueuedAt;
+                if (kv.second.enqueuedAt > newest) newest = kv.second.enqueuedAt;
+            }
+        }
         handler->PSendSysMessage("[BotBrackets] Pending queue: {} entries.", queueSize);
 
         if (g_MaxPendingQueueSize > 0)
@@ -363,14 +374,6 @@ public:
         {
             handler->SendSysMessage("[BotBrackets] Queue is empty.");
             return true;
-        }
-
-        uint32 oldest = std::numeric_limits<uint32>::max();
-        uint32 newest = 0;
-        for (const auto& kv : g_PendingLevelResets)
-        {
-            if (kv.second.enqueuedAt < oldest) oldest = kv.second.enqueuedAt;
-            if (kv.second.enqueuedAt > newest) newest = kv.second.enqueuedAt;
         }
 
         uint32 now = static_cast<uint32>(time(nullptr));

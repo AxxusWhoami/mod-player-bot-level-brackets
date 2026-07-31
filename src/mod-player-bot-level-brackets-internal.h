@@ -28,6 +28,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <mutex>
 #include <utility>
 #include <vector>
 
@@ -110,6 +111,7 @@ extern std::unordered_set<std::string>                       g_ExcludeBotNames;
 extern std::unordered_set<uint32>                            g_RealPlayerGuildIds;
 extern std::unordered_set<uint32>                            g_PersistentRealPlayerGuildIds;
 extern std::unordered_map<ObjectGuid, PendingResetEntry>     g_PendingLevelResets;
+extern std::mutex                                             g_PendingLevelResetsMutex;
 extern std::unordered_map<ObjectGuid, PendingTeleportEntry>   g_PendingTeleports;
 
 // =============================================================================

@@ -41,4 +41,5 @@ std::unordered_set<std::string>                   g_ExcludeBotNames;
 std::unordered_set<uint32>                        g_RealPlayerGuildIds;
 std::unordered_set<uint32>                        g_PersistentRealPlayerGuildIds;
 std::unordered_map<ObjectGuid, PendingResetEntry>   g_PendingLevelResets;
+std::mutex                                         g_PendingLevelResetsMutex;
 std::unordered_map<ObjectGuid, PendingTeleportEntry> g_PendingTeleports;

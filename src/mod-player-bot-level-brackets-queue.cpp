@@ -3,12 +3,16 @@
 void RemoveBotFromPendingResets(Player* bot)
 {
     if (bot)
+    {
+        std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
         g_PendingLevelResets.erase(bot->GetGUID());
+    }
 }
 
 
 bool EnqueuePendingReset(ObjectGuid guid, int targetRange, bool isAlliance)
 {
+    std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
     if (g_MaxPendingQueueSize > 0 && g_PendingLevelResets.size() >= g_MaxPendingQueueSize)
     {
         if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
@@ -33,6 +37,7 @@ bool EnqueuePendingReset(ObjectGuid guid, int targetRange, bool isAlliance)
 
 void ProcessPendingLevelResets()
 {
+    std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
     if (g_BotDistFullDebugMode)
         LOG_INFO("server.world", "[BotLevelBrackets] Processing {} pending resets...", g_PendingLevelResets.size());
 

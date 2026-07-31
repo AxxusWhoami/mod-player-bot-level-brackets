@@ -192,8 +192,7 @@ int GetOrFlagPlayerBracket(Player* player)
     if (targetRange >= 0)
     {
         bool isAlliance = IsAlliancePlayerBot(player);
-        if (g_PendingLevelResets.count(player->GetGUID()) == 0)
-            EnqueuePendingReset(player->GetGUID(), targetRange, isAlliance);
+        EnqueuePendingReset(player->GetGUID(), targetRange, isAlliance);
     }
 
     return -1;
@@ -459,12 +458,12 @@ void RunDistributionCycle(ChatHandler* handler)
     {
         LOG_INFO("server.world",
                  "[BotLevelBrackets] Distribution cycle complete. Alliance: {}, Horde: {}, Pending: {}.",
-                 totalAllianceBots, totalHordeBots, g_PendingLevelResets.size());
+                 totalAllianceBots, totalHordeBots, [&]{ std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex); return g_PendingLevelResets.size(); }());
     }
 
     if (handler)
     {
         handler->PSendSysMessage("[BotBrackets] Alliance: {} bots  Horde: {} bots  Pending: {}",
-                                 totalAllianceBots, totalHordeBots, g_PendingLevelResets.size());
+                                 totalAllianceBots, totalHordeBots, [&]{ std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex); return g_PendingLevelResets.size(); }());
     }
 }
