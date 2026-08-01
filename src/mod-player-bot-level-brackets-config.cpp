@@ -83,6 +83,13 @@ void LoadBotLevelBracketsConfig()
     g_SocialListRefreshFrequency        = sConfigMgr->GetOption<uint32>("BotLevelBrackets.SocialListRefreshFrequency", 300);
     g_UseDynamicDistribution            = sConfigMgr->GetOption<bool>("BotLevelBrackets.Dynamic.UseDynamicDistribution", false);
     g_RealPlayerWeight                  = sConfigMgr->GetOption<float>("BotLevelBrackets.Dynamic.RealPlayerWeight", 1.0f);
+    if (g_RealPlayerWeight < 0.0f)
+    {
+        LOG_ERROR("server.loading",
+                  "[BotLevelBrackets] Dynamic.RealPlayerWeight is {} (must be >= 0). Clamping to 0.",
+                  g_RealPlayerWeight);
+        g_RealPlayerWeight = 0.0f;
+    }
     g_SyncFactions                      = sConfigMgr->GetOption<bool>("BotLevelBrackets.Dynamic.SyncFactions", false);
     g_TeleportOnLevelChange             = sConfigMgr->GetOption<bool>("BotLevelBrackets.TeleportOnLevelChange", true);
     g_IgnoreFriendListed                = sConfigMgr->GetOption<bool>("BotLevelBrackets.IgnoreFriendListed", true);
@@ -134,6 +141,15 @@ void LoadBotLevelBracketsConfig()
                  "[BotLevelBrackets] BotLevelBrackets.FlaggedProcessLimit is {} which is very low. "
                  "The pending queue may grow faster than it is processed. Consider a value >= 3.",
                  g_FlaggedProcessLimit);
+    }
+
+    if (g_NumRanges > 9)
+    {
+        LOG_ERROR("server.loading",
+                  "[BotLevelBrackets] NumRanges is {} but only 9 teleport destinations are defined. "
+                  "Bots assigned to ranges 10+ will be level-reset but NOT teleported. "
+                  "Either reduce NumRanges to 9 or add more teleport destinations in the code.",
+                  g_NumRanges);
     }
 
     // Load Alliance configuration.

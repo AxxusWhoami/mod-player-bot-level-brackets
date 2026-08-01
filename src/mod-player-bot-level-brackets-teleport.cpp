@@ -83,22 +83,25 @@ bool EnqueuePendingTeleport(Player* bot, uint8 newLevel, uint8 teamID)
     if (!bot)
         return false;
 
-    if (g_PendingTeleports.count(bot->GetGUID()) > 0)
     {
-        if (g_BotDistFullDebugMode)
-            LOG_INFO("server.world",
-                     "[BotLevelBrackets] EnqueuePendingTeleport: bot '{}' already has a pending teleport, skipping.",
-                     bot->GetName());
-        return false;
-    }
+        std::lock_guard<std::mutex> lock(g_PendingTeleportsMutex);
+        if (g_PendingTeleports.count(bot->GetGUID()) > 0)
+        {
+            if (g_BotDistFullDebugMode)
+                LOG_INFO("server.world",
+                         "[BotLevelBrackets] EnqueuePendingTeleport: bot '{}' already has a pending teleport, skipping.",
+                         bot->GetName());
+            return false;
+        }
 
-    PendingTeleportEntry entry;
+        PendingTeleportEntry entry;
     entry.botGuid     = bot->GetGUID();
     entry.newLevel    = newLevel;
     entry.teamID      = teamID;
     entry.enqueuedAt  = static_cast<uint32>(time(nullptr));
     entry.useHubDest  = false;
-    g_PendingTeleports[bot->GetGUID()] = std::move(entry);
+        g_PendingTeleports[bot->GetGUID()] = std::move(entry);
+    }
 
     if (g_BotDistFullDebugMode)
         LOG_INFO("server.world",
@@ -112,27 +115,30 @@ bool EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, floa
     if (!bot)
         return false;
 
-    if (g_PendingTeleports.count(bot->GetGUID()) > 0)
     {
-        if (g_BotDistFullDebugMode)
-            LOG_INFO("server.world",
-                     "[BotLevelBrackets] EnqueuePendingHubTeleport: bot '{}' already has a pending teleport, skipping.",
-                     bot->GetName());
-        return false;
-    }
+        std::lock_guard<std::mutex> lock(g_PendingTeleportsMutex);
+        if (g_PendingTeleports.count(bot->GetGUID()) > 0)
+        {
+            if (g_BotDistFullDebugMode)
+                LOG_INFO("server.world",
+                         "[BotLevelBrackets] EnqueuePendingHubTeleport: bot '{}' already has a pending teleport, skipping.",
+                         bot->GetName());
+            return false;
+        }
 
-    PendingTeleportEntry entry;
-    entry.botGuid     = bot->GetGUID();
-    entry.newLevel    = bot->GetLevel();
-    entry.teamID      = bot->GetTeamId();
-    entry.enqueuedAt  = static_cast<uint32>(time(nullptr));
-    entry.useHubDest  = true;
-    entry.destMapId   = mapId;
-    entry.destX       = x;
-    entry.destY       = y;
-    entry.destZ       = z;
-    entry.destO       = o;
-    g_PendingTeleports[bot->GetGUID()] = std::move(entry);
+        PendingTeleportEntry entry;
+        entry.botGuid     = bot->GetGUID();
+        entry.newLevel    = bot->GetLevel();
+        entry.teamID      = bot->GetTeamId();
+        entry.enqueuedAt  = static_cast<uint32>(time(nullptr));
+        entry.useHubDest  = true;
+        entry.destMapId   = mapId;
+        entry.destX       = x;
+        entry.destY       = y;
+        entry.destZ       = z;
+        entry.destO       = o;
+        g_PendingTeleports[bot->GetGUID()] = std::move(entry);
+    }
 
     if (g_BotDistFullDebugMode)
         LOG_INFO("server.world",
@@ -144,6 +150,8 @@ bool EnqueuePendingHubTeleport(Player* bot, uint32 mapId, float x, float y, floa
 
 void ProcessPendingTeleports()
 {
+    std::lock_guard<std::mutex> lock(g_PendingTeleportsMutex);
+
     if (g_PendingTeleports.empty())
         return;
 
@@ -219,7 +227,10 @@ void ProcessPendingTeleports()
 void RemoveBotFromPendingTeleports(Player* bot)
 {
     if (bot)
+    {
+        std::lock_guard<std::mutex> lock(g_PendingTeleportsMutex);
         g_PendingTeleports.erase(bot->GetGUID());
+    }
 }
 
 

@@ -114,6 +114,7 @@ extern std::unordered_set<uint32>                            g_PersistentRealPla
 extern std::unordered_map<ObjectGuid, PendingResetEntry>     g_PendingLevelResets;
 extern std::mutex                                             g_PendingLevelResetsMutex;
 extern std::unordered_map<ObjectGuid, PendingTeleportEntry>   g_PendingTeleports;
+extern std::mutex                                            g_PendingTeleportsMutex;
 
 // =============================================================================
 // FUNCTION DECLARATIONS

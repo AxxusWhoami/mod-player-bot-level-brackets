@@ -43,4 +43,5 @@ std::unordered_set<uint32>                        g_PersistentRealPlayerGuildIds
 std::unordered_map<ObjectGuid, PendingResetEntry>   g_PendingLevelResets;
 std::mutex                                         g_PendingLevelResetsMutex;
 std::unordered_map<ObjectGuid, PendingTeleportEntry> g_PendingTeleports;
+std::mutex                                         g_PendingTeleportsMutex;
 std::atomic<bool>                                  g_DistributionInProgress{false};
