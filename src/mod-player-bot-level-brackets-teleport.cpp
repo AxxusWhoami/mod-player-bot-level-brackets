@@ -171,12 +171,6 @@ void ProcessPendingTeleports()
             continue;
         }
 
-        if (IsBotInProtectedDuelZone(bot))
-        {
-            it = g_PendingTeleports.erase(it);
-            continue;
-        }
-
         if (bot->IsBeingTeleported())
         {
             ++it;
@@ -326,8 +320,6 @@ static bool IsBotDispersable(Player* bot)
         return false;
     if (IsBotExcluded(bot))
         return false;
-    if (IsBotInProtectedDuelZone(bot))
-        return false;
     if (g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(bot))
         return false;
     if (g_IgnoreFriendListed && BotInFriendList(bot))
@@ -338,8 +330,11 @@ static bool IsBotDispersable(Player* bot)
         return false;
     if (!bot->GetSession() || bot->GetSession()->isLogingOut())
         return false;
-    if (g_PendingTeleports.count(bot->GetGUID()) > 0)
-        return false;
+    {
+        std::lock_guard<std::mutex> lock(g_PendingTeleportsMutex);
+        if (g_PendingTeleports.count(bot->GetGUID()) > 0)
+            return false;
+    }
     if (bot->InBattleground() || bot->InArena() || bot->InBattlegroundQueue())
         return false;
     return true;

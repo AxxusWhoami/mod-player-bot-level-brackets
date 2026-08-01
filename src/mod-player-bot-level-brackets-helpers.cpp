@@ -70,13 +70,6 @@ bool IsBotSafeForLevelReset(Player* bot)
             LOG_INFO("server.world", "[BotLevelBrackets] Null or invalid bot pointer.");
         return false;
     }
-    if (IsBotInProtectedDuelZone(bot))
-    {
-        if (g_BotDistFullDebugMode)
-            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is in a protected duel zone (zone {}). Skipping.",
-                     bot->GetName(), bot->GetLevel(), bot->GetZoneId());
-        return false;
-    }
     if (!bot->IsInWorld())
     {
         if (g_BotDistFullDebugMode)
@@ -105,6 +98,12 @@ bool IsBotSafeForLevelReset(Player* bot)
     {
         if (g_BotDistFullDebugMode)
             LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is in flight.", bot->GetName(), bot->GetLevel());
+        return false;
+    }
+    if (IsBotInProtectedDuelZone(bot))
+    {
+        if (g_BotDistFullDebugMode)
+            LOG_INFO("server.world", "[BotLevelBrackets] Bot {} (Level {}) is in a protected duel zone.", bot->GetName(), bot->GetLevel());
         return false;
     }
     if (Group* group = bot->GetGroup())

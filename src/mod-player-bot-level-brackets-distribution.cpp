@@ -127,9 +127,6 @@ int GetOrFlagPlayerBracket(Player* player)
     if (isBot && IsBotExcluded(player))
         return -1;
 
-    if (isBot && IsBotInProtectedDuelZone(player))
-        return -1;
-
     if (isBot && g_IgnoreGuildBotsWithRealPlayers && BotInGuildWithRealPlayer(player))
         return -1;
 
@@ -409,13 +406,6 @@ void RunDistributionCycle(ChatHandler* handler)
 
         if (IsAlliancePlayerBot(player))
         {
-            if (IsBotInProtectedDuelZone(player))
-            {
-                if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.world", "[BotLevelBrackets] Alliance bot '{}' in protected duel zone, excluded from distribution.",
-                             player->GetName());
-                continue;
-            }
             totalAllianceBots++;
             int rangeIndex = GetOrFlagPlayerBracket(player);
             if (rangeIndex >= 0)
@@ -432,13 +422,6 @@ void RunDistributionCycle(ChatHandler* handler)
         }
         else if (IsHordePlayerBot(player))
         {
-            if (IsBotInProtectedDuelZone(player))
-            {
-                if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.world", "[BotLevelBrackets] Horde bot '{}' in protected duel zone, excluded from distribution.",
-                             player->GetName());
-                continue;
-            }
             totalHordeBots++;
             int rangeIndex = GetOrFlagPlayerBracket(player);
             if (rangeIndex >= 0)
