@@ -204,7 +204,7 @@ BotLevelBrackets.HubDisperse.MaxBotsPerHub = 50
 #        Description: How often (in seconds) the hub populate scheduler runs.
 #                     This scheduler fills capitals below quota and disperses
 #                     excess or wrong-level bots from hubs (e.g. Dalaran only
-#                     accepts levels 68-80).
+#                     accepts levels 70-80).
 #        Default:     30
 BotLevelBrackets.HubPopulate.Frequency = 30
 

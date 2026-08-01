@@ -241,25 +241,27 @@ struct HubArea
     uint8  teamID;     // TEAM_ALLIANCE or TEAM_HORDE (or both)
     uint8  maxLevel;   // only used for starting areas; bots above this level are dispersed
     uint8  minLevel;   // only used for hub areas; bots below this level are dispersed (0 = no min)
+    uint32 zoneId;     // when non-zero, IsInArea matches by GetZoneId() instead of coordinates
+    uint32 areaId;     // when non-zero, IsInArea also requires GetAreaId() to match
 };
 
 static const HubArea s_HubAreas[] =
 {
     // Stormwind City (Alliance) — all levels welcome
-    { 0,  -8810.0f,  640.0f,  94.0f, 200.0f, TEAM_ALLIANCE, 0, 0 },
+    { 0,  -8810.0f,  640.0f,  94.0f, 200.0f, TEAM_ALLIANCE, 0, 0, 1519, 1519 },
     // Orgrimmar (Horde) — all levels welcome
-    { 1,  1570.0f,  -4400.0f, 8.0f, 200.0f, TEAM_HORDE, 0, 0 },
-    // Dalaran (Northrend, both factions) — only levels 68-80
-    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_ALLIANCE, 80, 68 },
-    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_HORDE, 80, 68 },
+    { 1,  1570.0f,  -4400.0f, 8.0f, 200.0f, TEAM_HORDE, 0, 0, 1637, 1637 },
+    // Dalaran (Northrend, both factions) — only levels 70-80
+    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_ALLIANCE, 80, 70, 4395, 4395 },
+    { 571, 5807.0f,  590.0f,  660.0f, 200.0f, TEAM_HORDE, 80, 70, 4395, 4395 },
     // Ironforge (Alliance) — all levels welcome
-    { 0,  -4980.0f, -940.0f,  501.0f, 150.0f, TEAM_ALLIANCE, 0, 0 },
+    { 0,  -4980.0f, -940.0f,  501.0f, 150.0f, TEAM_ALLIANCE, 0, 0, 1537, 1537 },
     // Undercity (Horde) — all levels welcome
-    { 0,  1620.0f,  240.0f,  60.0f, 150.0f, TEAM_HORDE, 0, 0 },
+    { 0,  1620.0f,  240.0f,  60.0f, 150.0f, TEAM_HORDE, 0, 0, 1497, 1497 },
     // Darnassus (Alliance) — all levels welcome
-    { 1,  9950.0f,  2330.0f, 1330.0f, 150.0f, TEAM_ALLIANCE, 0, 0 },
+    { 1,  9950.0f,  2330.0f, 1330.0f, 150.0f, TEAM_ALLIANCE, 0, 0, 1657, 1657 },
     // Thunder Bluff (Horde) — all levels welcome
-    { 1,  -1290.0f, 150.0f,  130.0f, 150.0f, TEAM_HORDE, 0, 0 },
+    { 1,  -1290.0f, 150.0f,  130.0f, 150.0f, TEAM_HORDE, 0, 0, 1638, 1638 },
 };
 
 static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0]);
@@ -269,21 +271,21 @@ static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0
 static const HubArea s_StartingAreas[] =
 {
     // Elwynn Forest (Human start - Northshire Valley)
-    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE, 9, 0 },
+    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE, 9, 0, 0, 0 },
     // Dun Morogh (Dwarf/Gnome start - Coldridge Valley)
-    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE, 9, 0 },
+    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE, 9, 0, 0, 0 },
     // Teldrassil (Night Elf start - Shadowglen)
-    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE, 9, 0 },
+    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE, 9, 0, 0, 0 },
     // Durotar (Orc/Troll start - Valley of Trials)
-    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE, 9, 0 },
+    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE, 9, 0, 0, 0 },
     // Mulgore (Tauren start - Red Cloud Mesa)
-    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE, 9, 0 },
+    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE, 9, 0, 0, 0 },
     // Tirisfal Glades (Undead start - Deathknell)
-    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE, 9, 0 },
+    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE, 9, 0, 0, 0 },
     // Eversong Woods (Blood Elf start - Sunstrider Isle)
-    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE, 9, 0 },
+    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE, 9, 0, 0, 0 },
     // Azuremyst Isle (Draenei start - Ammen Vale)
-    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE, 9, 0 },
+    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE, 9, 0, 0, 0 },
 };
 
 static constexpr size_t s_NumStartingAreas = sizeof(s_StartingAreas) / sizeof(s_StartingAreas[0]);
@@ -343,9 +345,21 @@ static bool IsBotDispersable(Player* bot)
 
 static bool IsInArea(const Player* bot, const HubArea& area)
 {
-    if (bot->GetMapId() != area.mapId)
-        return false;
     if (bot->GetTeamId() != area.teamID)
+        return false;
+
+    // When zoneId is set, match by GetZoneId()/GetAreaId() — more reliable than coordinates.
+    if (area.zoneId != 0)
+    {
+        if (bot->GetZoneId() != area.zoneId)
+            return false;
+        if (area.areaId != 0 && bot->GetAreaId() != area.areaId)
+            return false;
+        return true;
+    }
+
+    // Fallback: coordinate-based radius check.
+    if (bot->GetMapId() != area.mapId)
         return false;
 
     float dx = bot->GetPositionX() - area.cx;
@@ -385,7 +399,7 @@ static bool IsOnWrongMapForLevel(Player* bot)
 // Scheduler 1: Populate & disperse capital city hubs.
 // Fills hubs below quota (pulling bots from the wild) and disperses excess
 // or wrong-level bots from hubs. Respects per-hub minLevel/maxLevel (e.g.
-// Dalaran only accepts levels 68-80).
+// Dalaran only accepts levels 70-80).
 // =============================================================================
 void ProcessHubPopulate()
 {
@@ -560,7 +574,7 @@ void ProcessHubPopulate()
             if (info.inStarting)
                 continue;
 
-            // Respect hub level restrictions (e.g. Dalaran 68-80).
+            // Respect hub level restrictions (e.g. Dalaran 70-80).
             uint8 level = info.bot->GetLevel();
             if (hub.minLevel > 0 && level < hub.minLevel)
                 continue;
