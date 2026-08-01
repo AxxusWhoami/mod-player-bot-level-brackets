@@ -145,6 +145,7 @@ void CleanupGuildTracker();
 
 // --- queue ---
 void RemoveBotFromPendingResets(Player* bot);
+bool IsPendingQueueFull();
 bool EnqueuePendingReset(ObjectGuid guid, int targetRange, bool isAlliance);
 void ProcessPendingLevelResets();
 void LoadPendingResetsFromDB();

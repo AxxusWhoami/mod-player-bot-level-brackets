@@ -328,6 +328,8 @@ static void RedistributeFaction(
 
         auto drainBatch = [&](std::vector<Player*>& bots, const char* batchLabel)
         {
+            if (IsPendingQueueFull())
+                return;
             size_t targetIdx = 0;
             while (actualCounts[i] > desiredCounts[i] && !bots.empty() && targetIdx < targetRanges.size())
             {
@@ -347,6 +349,8 @@ static void RedistributeFaction(
                     actualCounts[i]--;
                     actualCounts[targetRange]++;
                 }
+                else
+                    break; // queue full - stop trying
                 if (actualCounts[targetRange] >= desiredCounts[targetRange])
                     targetIdx++;
             }

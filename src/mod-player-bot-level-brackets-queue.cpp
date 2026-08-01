@@ -10,14 +10,21 @@ void RemoveBotFromPendingResets(Player* bot)
 }
 
 
+bool IsPendingQueueFull()
+{
+    std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
+    return g_MaxPendingQueueSize > 0 && g_PendingLevelResets.size() >= g_MaxPendingQueueSize;
+}
+
+
 bool EnqueuePendingReset(ObjectGuid guid, int targetRange, bool isAlliance)
 {
     std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
     if (g_MaxPendingQueueSize > 0 && g_PendingLevelResets.size() >= g_MaxPendingQueueSize)
     {
-        if (g_BotDistFullDebugMode || g_BotDistLiteDebugMode)
+        if (g_BotDistFullDebugMode)
         {
-            LOG_WARN("server.world",
+            LOG_INFO("server.world",
                      "[BotLevelBrackets] Pending queue is full ({}/{}). Bot {} not enqueued.",
                      g_PendingLevelResets.size(), g_MaxPendingQueueSize, guid.ToString());
         }
@@ -67,9 +74,19 @@ void ProcessPendingLevelResets()
 
         uint32 now = static_cast<uint32>(time(nullptr));
 
+        // Adaptive batch size: when the queue is large, process proportionally
+        // more bots per cycle so the queue can actually drain. Without this,
+        // a small fixed limit (e.g. 5) combined with a fast distribution cycle
+        // causes the queue to fill and stay full forever.
+        size_t batchSize = g_FlaggedProcessLimit;
+        if (batchSize == 0)
+            batchSize = g_PendingLevelResets.size(); // unlimited
+        else
+            batchSize = std::max(static_cast<size_t>(batchSize), g_PendingLevelResets.size() / 4);
+
         for (auto it = g_PendingLevelResets.begin(); it != g_PendingLevelResets.end(); )
         {
-            if (g_FlaggedProcessLimit > 0 && candidates.size() >= g_FlaggedProcessLimit)
+            if (candidates.size() >= batchSize)
                 break;
 
             uint32 effectiveTTL = (g_PendingQueueTTL > 0) ? g_PendingQueueTTL : 3600;
