@@ -271,21 +271,21 @@ static constexpr size_t s_NumHubAreas = sizeof(s_HubAreas) / sizeof(s_HubAreas[0
 static const HubArea s_StartingAreas[] =
 {
     // Elwynn Forest (Human start - Northshire Valley)
-    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE, 9, 0, 0, 0 },
+    { 0,  -8913.0f, -133.0f,  80.0f, 250.0f, TEAM_ALLIANCE, 10, 0, 0, 0 },
     // Dun Morogh (Dwarf/Gnome start - Coldridge Valley)
-    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE, 9, 0, 0, 0 },
+    { 0,  -6230.0f,  330.0f,  383.0f, 300.0f, TEAM_ALLIANCE, 10, 0, 0, 0 },
     // Teldrassil (Night Elf start - Shadowglen)
-    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE, 9, 0, 0, 0 },
+    { 1,  10330.0f, 830.0f,  1326.0f, 250.0f, TEAM_ALLIANCE, 10, 0, 0, 0 },
     // Durotar (Orc/Troll start - Valley of Trials)
-    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE, 9, 0, 0, 0 },
+    { 1,  -620.0f, -4300.0f,  10.0f, 300.0f, TEAM_HORDE, 10, 0, 0, 0 },
     // Mulgore (Tauren start - Red Cloud Mesa)
-    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE, 9, 0, 0, 0 },
+    { 1,  -2900.0f, -1300.0f, 90.0f, 300.0f, TEAM_HORDE, 10, 0, 0, 0 },
     // Tirisfal Glades (Undead start - Deathknell)
-    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE, 9, 0, 0, 0 },
+    { 0,  2250.0f,  320.0f,  35.0f, 300.0f, TEAM_HORDE, 10, 0, 0, 0 },
     // Eversong Woods (Blood Elf start - Sunstrider Isle)
-    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE, 9, 0, 0, 0 },
+    { 530, 8500.0f, -7200.0f, 140.0f, 300.0f, TEAM_HORDE, 10, 0, 0, 0 },
     // Azuremyst Isle (Draenei start - Ammen Vale)
-    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE, 9, 0, 0, 0 },
+    { 530, -4200.0f, -11500.0f, 120.0f, 300.0f, TEAM_ALLIANCE, 10, 0, 0, 0 },
 };
 
 static constexpr size_t s_NumStartingAreas = sizeof(s_StartingAreas) / sizeof(s_StartingAreas[0]);
@@ -651,17 +651,29 @@ void ProcessStartingZoneDisperse()
                 break; // not safe to teleport right now; try next cycle
 
             uint8 teamID = bot->GetTeamId();
-            int rangeIndex = GetLevelRangeIndex(level, teamID);
-            if (rangeIndex >= 0)
-            {
-                EnqueuePendingTeleport(bot, level, teamID);
-                ++processed;
 
-                if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.world",
-                             "[BotLevelBrackets] StartingZoneDisperse: bot '{}' (level {}) dispersed from starting area {} to leveling zone.",
-                             bot->GetName(), level, i);
+            // Send directly to the main capital city instead of a leveling zone
+            // so over-leveled bots leave starting areas immediately in bulk.
+            uint32 mapId;
+            float cx, cy, cz;
+            if (teamID == TEAM_ALLIANCE)
+            {
+                mapId = 0; cx = -8810.0f; cy = 640.0f; cz = 94.0f;
             }
+            else
+            {
+                mapId = 1; cx = 1570.0f; cy = -4400.0f; cz = 8.0f;
+            }
+
+            float angle  = static_cast<float>(rand_norm()) * 2.0f * static_cast<float>(M_PI);
+            float offset = static_cast<float>(rand_norm()) * 30.0f;
+            EnqueuePendingHubTeleport(bot, mapId, cx + cosf(angle) * offset, cy + sinf(angle) * offset, cz, angle);
+            ++processed;
+
+            if (g_BotDistFullDebugMode)
+                LOG_INFO("server.world",
+                         "[BotLevelBrackets] StartingZoneDisperse: bot '{}' (level {}) dispersed from starting area {} to capital city.",
+                         bot->GetName(), level, i);
             break;
         }
     }
