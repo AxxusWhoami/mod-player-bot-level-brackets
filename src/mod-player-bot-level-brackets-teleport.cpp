@@ -11,7 +11,7 @@ struct TeleportDestination
 // These are safe starting-town or quest-hub locations appropriate for each range.
 static const TeleportDestination s_AllianceZones[] =
 {
-    { 0,  -8949.95f, -132.49f, 83.53f, 0.0f },   // 1-9:   Elwynn Forest (Goldshire)
+    { 0,  -8949.95f, -132.49f, 83.53f, 0.0f },     // 1-9:   Elwynn Forest (Goldshire)
     { 0,  -10500.0f, -1157.0f, 27.0f, 0.0f },     // 10-19: Westfall (Sentinel Hill)
     { 0,  -10720.0f, -2480.0f, 14.0f, 0.0f },     // 20-29: Redridge Mountains (Lakeshire)
     { 0,  -3350.0f,  -3090.0f, 28.0f, 0.0f },     // 30-39: STV (Rebel Camp, Northern)

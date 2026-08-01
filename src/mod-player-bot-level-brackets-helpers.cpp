@@ -134,8 +134,11 @@ bool IsBotInProtectedDuelZone(Player* bot)
 {
     if (!bot || !bot->IsInWorld())
         return false;
-    uint32 zoneId = bot->GetZoneId();
-    // Zone 12: Elwynn Forest (Stormwind duels)
-    // Zone 14: Durotar (Orgrimmar duels)
-    return zoneId == 12 || zoneId == 14;
+    // Protect only the capital cities themselves (where player duels happen),
+    // NOT the surrounding outdoor zones (Elwynn Forest = zone 12, Durotar = zone 14).
+    // Blocking the whole zone traps every bot in starting areas permanently.
+    uint32 areaId = bot->GetAreaId();
+    // Area 1519: Stormwind City
+    // Area 1637: Orgrimmar
+    return areaId == 1519 || areaId == 1637;
 }
