@@ -73,14 +73,34 @@ void ProcessPendingLevelResets()
             return;
 
         uint32 now = static_cast<uint32>(time(nullptr));
+        uint32 effectiveTTL = (g_PendingQueueTTL > 0) ? g_PendingQueueTTL : 3600;
 
-        // Adaptive batch size: when the queue is large, process proportionally
-        // more bots per cycle so the queue can actually drain. Without this,
-        // a small fixed limit (e.g. 5) combined with a fast distribution cycle
-        // causes the queue to fill and stay full forever.
+        // Phase 1a: sweep ALL expired entries regardless of batch position.
+        // Without this, stale entries beyond the batch window never get
+        // cleaned and the queue stays permanently full.
+        uint32 expiredCount = 0;
+        for (auto it = g_PendingLevelResets.begin(); it != g_PendingLevelResets.end(); )
+        {
+            if ((now - it->second.enqueuedAt) > effectiveTTL)
+            {
+                DeletePendingFromDB(it->first);
+                it = g_PendingLevelResets.erase(it);
+                ++expiredCount;
+            }
+            else
+                ++it;
+        }
+        if (expiredCount > 0 && (g_BotDistFullDebugMode || g_BotDistLiteDebugMode))
+            LOG_INFO("server.world", "[BotLevelBrackets] Expired {} stale entries from pending queue (TTL {}s).",
+                     expiredCount, effectiveTTL);
+
+        if (g_PendingLevelResets.empty())
+            return;
+
+        // Phase 1b: adaptive batch size — drain faster when queue is large.
         size_t batchSize = g_FlaggedProcessLimit;
         if (batchSize == 0)
-            batchSize = g_PendingLevelResets.size(); // unlimited
+            batchSize = g_PendingLevelResets.size();
         else
             batchSize = std::max(static_cast<size_t>(batchSize), g_PendingLevelResets.size() / 4);
 
@@ -88,17 +108,6 @@ void ProcessPendingLevelResets()
         {
             if (candidates.size() >= batchSize)
                 break;
-
-            uint32 effectiveTTL = (g_PendingQueueTTL > 0) ? g_PendingQueueTTL : 3600;
-            if ((now - it->second.enqueuedAt) > effectiveTTL)
-            {
-                if (g_BotDistFullDebugMode)
-                    LOG_INFO("server.world", "[BotLevelBrackets] Pending entry for {} expired (TTL {}s). Dropping.",
-                             it->first.ToString(), effectiveTTL);
-                DeletePendingFromDB(it->first);
-                it = g_PendingLevelResets.erase(it);
-                continue;
-            }
 
             Player* bot = ObjectAccessor::FindPlayer(it->second.botGuid);
 
@@ -181,12 +190,19 @@ void ProcessPendingLevelResets()
 
 void LoadPendingResetsFromDB()
 {
+    uint32 now = static_cast<uint32>(time(nullptr));
+    uint32 effectiveTTL = (g_PendingQueueTTL > 0) ? g_PendingQueueTTL : 3600;
+
     auto result = CharacterDatabase.Query(
         "SELECT bot_guid, target_range, is_alliance, enqueued_at FROM bot_level_brackets_pending_resets");
     if (!result)
+    {
+        LOG_INFO("server.loading", "[BotLevelBrackets] Loaded 0 pending resets from database.");
         return;
+    }
 
-    std::lock_guard<std::mutex> lock(g_PendingLevelResetsMutex);
+    uint32 loaded = 0;
+    uint32 expired = 0;
     do
     {
         uint64 rawGuid = (*result)[0].Get<uint64>();
@@ -194,9 +210,24 @@ void LoadPendingResetsFromDB()
         bool   isAlliance = (*result)[2].Get<uint8>() != 0;
         uint32 enqueuedAt = (*result)[3].Get<uint32>();
 
+        if ((now - enqueuedAt) > effectiveTTL)
+        {
+            ++expired;
+            continue;
+        }
+
         ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(rawGuid);
         g_PendingLevelResets.emplace(guid, PendingResetEntry{guid, targetRange, isAlliance, enqueuedAt});
+        ++loaded;
     } while (result->NextRow());
 
-    LOG_INFO("server.loading", "[BotLevelBrackets] Loaded {} pending resets from database.", g_PendingLevelResets.size());
+    if (expired > 0)
+    {
+        CharacterDatabase.Execute(
+            "DELETE FROM bot_level_brackets_pending_resets WHERE ({} - enqueued_at) > {}",
+            now, effectiveTTL);
+    }
+
+    LOG_INFO("server.loading", "[BotLevelBrackets] Loaded {} pending resets from database ({} expired entries dropped).",
+             loaded, expired);
 }

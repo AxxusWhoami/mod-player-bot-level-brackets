@@ -63,10 +63,8 @@ public:
         m_startingZoneTimer  += diff;
         m_wrongMapTimer       += diff;
 
-        if (m_flaggedTimer >= g_BotDistFlaggedCheckFrequency * 1000)
+        if (m_flaggedTimer >= 5000)
         {
-            if (g_BotDistFullDebugMode)
-                LOG_INFO("server.world", "[BotLevelBrackets] Pending Level Resets Triggering.");
             ProcessPendingLevelResets();
             m_flaggedTimer = 0;
         }
